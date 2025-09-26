@@ -37,7 +37,7 @@ jobs:
         run: |
           git config --global user.name 'CAMARA Bot'
           git config --global user.email 'camara-bot@users.noreply.github.com'
-          git add dist
+          git add dist -f
           # The following command will check if there are any changes to commit.
           # If there are, it will commit and push. If not, it will exit gracefully.
           git diff-index --quiet HEAD || git commit -m "docs(openapi): Regenerate complete CAMARA spec"
