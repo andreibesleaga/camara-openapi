@@ -5,13 +5,12 @@ on:
     branches:
       - main
   schedule:
-    - cron: "0 2 * * 1" # Run every Monday at 2 AM UTC
-  workflow_dispatch:
+    - cron: "0 0 * * 1" # Run every Monday at midnight UTC
+  workflow_dispatch: # Allows manual triggering
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
 
@@ -27,15 +26,11 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      # The script now handles everything internally
-      - name: Discover and Build Master OpenAPI Spec
+      - name: Build Master OpenAPI Spec
         run: npm run build
-        env:
-          # The token is now used for cloning private repos if needed, not for API calls
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # The validation step remains the same
       - name: Validate OpenAPI Spec
+        # This step only runs if the build succeeds and the file exists.
         run: npx @redocly/cli lint --config .redocly.yaml
 
       - name: Commit and Push Changes
