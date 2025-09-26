@@ -1,6 +1,7 @@
 # Logs
 logs
 temp_clones
+dist
 *.log
 npm-debug.log*
 
