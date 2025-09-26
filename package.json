@@ -1,17 +1,16 @@
 {
   "name": "camara-openapi",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Aggregates all CAMARA OpenAPI specs into a single file.",
-  "author": "Andrei Besleaga",
-  "license": "Apache-2.0",
-  "main": "scripts/merge.js",
+  "main": "scripts/discover-and-merge.js",
   "scripts": {
-    "build": "node scripts/merge.js"
+    "build": "node scripts/discover-and-merge.js"
   },
   "dependencies": {
-    "@apidevtools/swagger-parser": "^10.1.0",    
+    "@apidevtools/swagger-parser": "^10.1.0",
     "@redocly/cli": "^1.11.0",
     "axios": "^1.7.2",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "semver": "^7.6.2"
   }
 }
