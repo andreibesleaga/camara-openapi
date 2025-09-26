@@ -3,21 +3,9 @@ const path = require('path');
 const yaml = require('js-yaml');
 const SwaggerParser = require('@apidevtools/swagger-parser');
 
-// This function recursively finds and prefixes all internal $ref values.
-function updateRefs(obj, prefix) {
-  for (const key in obj) {
-    if (key === '$ref' && typeof obj[key] === 'string' && obj[key].startsWith('#/components/')) {
-      const refParts = obj[key].split('/');
-      const componentName = refParts.pop();
-      // Only prefix if it's not already prefixed (idempotency)
-      if (!componentName.startsWith(prefix)) {
-        refParts.push(`${prefix}${componentName}`);
-        obj[key] = refParts.join('/');
-      }
-    } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-      updateRefs(obj[key], prefix);
-    }
-  }
+// Helper function to escape strings for use in a RegExp
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 async function mergeApiSpecs() {
@@ -37,6 +25,11 @@ async function mergeApiSpecs() {
       securitySchemes: {},
       responses: {},
       parameters: {},
+      examples: {},
+      requestBodies: {},
+      headers: {},
+      links: {},
+      callbacks: {},
     },
     security: [],
     tags: [],
@@ -49,60 +42,77 @@ async function mergeApiSpecs() {
     }
 
     try {
-      console.log(`Fetching and bundling API: ${api.id} from ${api.url}`);
+      console.log(`Processing API: ${api.id} from ${api.url}`);
       
-      // CRITICAL FIX #1: Use SwaggerParser.bundle()
-      // This resolves all external $refs (like common definitions) into a single, self-contained spec object.
+      // Step 1: Bundle the spec to resolve all external/file references into one object.
       const spec = await SwaggerParser.bundle(api.url);
 
       const prefix = api.id;
       masterSpec.tags.push({ name: prefix, description: spec.info.title });
+      
+      // CRITICAL FIX: Instead of complex object manipulation, we serialize, search-and-replace, and deserialize.
+      // This is a more robust way to ensure all internal $refs are prefixed.
+      let specString = JSON.stringify(spec);
 
-      // 1. Merge and prefix paths
-      for (const p in spec.paths) {
-        const newPath = `/${prefix.toLowerCase()}${p}`;
-        const pathItem = spec.paths[p];
-        
-        // Iterate over methods (get, post, etc.)
-        for (const method in pathItem) {
-          const operation = pathItem[method];
-          
-          // CRITICAL FIX #2: Ensure unique operationId by prefixing it.
-          if (operation.operationId) {
-            operation.operationId = `${prefix}_${operation.operationId}`;
-          }
-          
-          operation.tags = [prefix]; // Assign tag for easy grouping in UIs
-        }
-        
-        updateRefs(pathItem, prefix); // Update any refs within the path definition
-        masterSpec.paths[newPath] = pathItem;
-      }
-
-      // 2. Merge and prefix components
       if (spec.components) {
         for (const compType in spec.components) {
-          if (!masterSpec.components[compType]) masterSpec.components[compType] = {};
           for (const compName in spec.components[compType]) {
-            const newName = `${prefix}${compName}`;
-            const component = spec.components[compType][compName];
-            updateRefs(component, prefix); // Update any nested refs before adding
-            masterSpec.components[compType][newName] = component;
+            const originalRef = `#/components/${compType}/${compName}`;
+            const newRef = `#/components/${compType}/${prefix}${compName}`;
+            
+            // Create a highly specific regex to only replace the exact reference string.
+            const searchRegex = new RegExp(`"${escapeRegExp(originalRef)}"`, 'g');
+            specString = specString.replace(searchRegex, `"${newRef}"`);
           }
         }
       }
+
+      const updatedSpec = JSON.parse(specString);
+
+      // Step 2: Now merge the fully resolved and reference-updated spec into the master.
+      // Merge Paths
+      if (updatedSpec.paths) {
+          for (const p in updatedSpec.paths) {
+            const newPath = `/${prefix.toLowerCase()}${p}`;
+            const pathItem = updatedSpec.paths[p];
+            for (const method in pathItem) {
+                const operation = pathItem[method];
+                if (operation.operationId) {
+                    operation.operationId = `${prefix}_${operation.operationId}`;
+                }
+                operation.tags = [prefix];
+            }
+            masterSpec.paths[newPath] = pathItem;
+          }
+      }
+
+      // Merge Components (with their new prefixed names)
+      if (updatedSpec.components) {
+          for (const compType in updatedSpec.components) {
+              if (!masterSpec.components[compType]) masterSpec.components[compType] = {};
+              for (const compName in updatedSpec.components[compType]) {
+                  const newName = `${prefix}${compName}`;
+                  masterSpec.components[compType][newName] = updatedSpec.components[compType][compName];
+              }
+          }
+      }
       
-      // 3. Merge security schemes uniquely to avoid overwrites
-      if (spec.components && spec.components.securitySchemes) {
-        for (const schemeName in spec.components.securitySchemes) {
+      // Merge security schemes uniquely
+      if (updatedSpec.components && updatedSpec.components.securitySchemes) {
+        for (const schemeName in updatedSpec.components.securitySchemes) {
           if (!masterSpec.components.securitySchemes[schemeName]) {
-            masterSpec.components.securitySchemes[schemeName] = spec.components.securitySchemes[schemeName];
+            masterSpec.components.securitySchemes[schemeName] = updatedSpec.components.securitySchemes[schemeName];
           }
         }
       }
 
     } catch (error) {
-      console.error(`Failed to process API ${api.id}:`, error.message);
+      console.error(`\n--- ERROR processing API: ${api.id} ---`);
+      console.error(`URL: ${api.url}`);
+      console.error(error.message);
+      console.error(`--- END ERROR ---\n`);
+      // Optional: decide if you want the whole build to fail on a single API error
+      // process.exit(1); 
     }
   }
 
@@ -112,7 +122,7 @@ async function mergeApiSpecs() {
   }
   fs.writeFileSync(
     path.join(outputPath, 'camara-complete.yaml'),
-    yaml.dump(masterSpec, { noRefs: true, lineWidth: -1 }),
+    yaml.dump(masterSpec, { noRefs: true, lineWidth: -1, quotingType: '"' }),
     'utf8'
   );
 
