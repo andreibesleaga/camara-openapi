@@ -134,10 +134,10 @@ async function mergeApiSpecs(discoveredApis) {
     for (const api of discoveredApis) {
          console.log(`-> Merging API: ${api.id}`);
          
-
-         const originalContent = fs.readFileSync(api.path, 'utf8');
-         fs.writeFileSync(path.join(originalsPath, `${api.id}.yaml`), originalContent, 'utf8');
-         console.log(`   - Saved original file to dist/original/${api.id}.yaml`);
+         // Use the original filename for the copy
+         const originalFilename = path.basename(api.path);
+         fs.copyFileSync(api.path, path.join(originalsPath, originalFilename));
+         console.log(`   - Saved original file to dist/original/${originalFilename}`);
 
          // Bundle the spec from the original path for all other operations.
          const spec = await SwaggerParser.bundle(api.path);
@@ -216,3 +216,4 @@ async function main() {
 }
 
 main();
+
