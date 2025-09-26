@@ -8,10 +8,11 @@ const semver = require('semver');
 const ORG_NAME = 'camaraproject';
 const GITHUB_API_BASE_URL = 'https://api.github.com';
 
-// Use a token if available for higher rate limits, but fall back to unauthenticated
+// CRITICAL FIX: Read the token from the environment variables provided by the GitHub Actions workflow.
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const axiosInstance = axios.create({
     baseURL: GITHUB_API_BASE_URL,
+    // Use the token for a much higher rate limit.
     headers: GITHUB_TOKEN ? { 'Authorization': `token ${GITHUB_TOKEN}` } : {},
 });
 
@@ -22,7 +23,6 @@ function escapeRegExp(string) {
 
 /**
  * Finds the latest version of an API file in a list of files.
- * E.g., finds '...v0.2.0.yaml' over '...v0.1.0.yaml'
  */
 function getLatestVersionedFile(files) {
     const versionedFiles = files
@@ -33,14 +33,12 @@ function getLatestVersionedFile(files) {
         .filter(Boolean);
 
     if (versionedFiles.length === 0) {
-        // If no versioned files, return the first yaml file found
         return files.find(f => f.name.endsWith('.yaml') || f.name.endsWith('.yml'));
     }
 
     versionedFiles.sort((a, b) => semver.rcompare(a.version, b.version));
     return versionedFiles[0];
 }
-
 
 /**
  * Scans a CAMARA repository to find the primary OpenAPI specification file.
@@ -64,13 +62,15 @@ async function findApiFileInRepo(repoName) {
                 }
             }
         } catch (error) {
-            // This is expected if a repo doesn't have the directory (e.g., 404 Not Found)
             if (error.response && error.response.status !== 404) {
-                console.error(`   - Error checking path ${apiPath} in ${repoName}: ${error.message}`);
+                 // Log rate limit errors explicitly
+                if (error.response.status === 403 || error.response.status === 429) {
+                    console.error(`   - RATE LIMIT ERROR checking ${repoName}. Check GITHUB_TOKEN.`);
+                }
             }
         }
     }
-    return null; // No API file found in standard locations
+    return null;
 }
 
 /**
@@ -84,8 +84,8 @@ async function discoverApiUrls() {
         const { data: repos } = await axiosInstance.get(`/orgs/${ORG_NAME}/repos?per_page=100`);
         console.log(`Found ${repos.length} repositories. Scanning for API specs...`);
         
-        // Exclude non-API repos
-        const excludedRepos = new Set(['.github', 'Governance', 'Commonalities', 'IdentityAndConsentManagement', 'ReleaseManagement']);
+        // Exclude non-API repos to reduce unnecessary API calls
+        const excludedRepos = new Set(['.github', 'Governance', 'Commonalities', 'IdentityAndConsentManagement', 'ReleaseManagement', 'project-administration', 'tooling', 'EasyCLA']);
 
         const apiPromises = repos
             .filter(repo => !repo.archived && !excludedRepos.has(repo.name))
@@ -99,13 +99,15 @@ async function discoverApiUrls() {
 
     } catch (error) {
         console.error('FATAL: Could not discover APIs from GitHub.', error.message);
+        if (error.response && (error.response.status === 403 || error.response.status === 429)) {
+            console.error('This is likely a GitHub API rate limit issue. Ensure the GITHUB_TOKEN is being passed correctly to the script.');
+        }
         process.exit(1);
     }
 
     console.log(`\nDiscovery complete. Found ${discoveredApis.length} valid API specifications.\n`);
     return discoveredApis;
 }
-
 
 async function mergeApiSpecs(apiList) {
     console.log('Starting merge process...');
