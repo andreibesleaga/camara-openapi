@@ -1,0 +1,39 @@
+name: Build and Validate CAMARA OpenAPI Spec
+
+on:
+    push:
+        branches:
+            - main
+    schedule:
+        - cron: "0 0 * * 1" # Run every Monday at midnight UTC
+    workflow_dispatch: # Allows manual triggering
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v4
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+
+            - name: Install Dependencies
+              run: npm install
+
+            - name: Build Master OpenAPI Spec
+              run: npm run build
+
+            - name: Validate OpenAPI Spec
+              run: npx @redocly/cli lint dist/camara-complete.yaml
+
+            - name: Commit and Push Changes
+              uses: stefanzweifel/git-auto-commit-action@v5
+              with:
+                  commit_message: "docs(openapi): Regenerate complete CAMARA spec"
+                  file_pattern: "dist/camara-complete.yaml"
+                  commit_user_name: "CAMARA Bot"
+                  commit_user_email: "camara-bot@users.noreply.github.com"

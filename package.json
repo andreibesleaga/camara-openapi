@@ -1,0 +1,16 @@
+{
+  "name": "camara-openapi",
+  "version": "1.0.0",
+  "description": "Aggregates all CAMARA OpenAPI specs into a single file.",
+  "author": "Andrei Besleaga",
+  "license": "Apache-2.0",
+  "main": "scripts/merge.js",
+  "scripts": {
+    "build": "node scripts/merge.js"
+  },
+  "dependencies": {
+    "@redocly/cli": "^1.11.0",
+    "axios": "^1.7.2",
+    "js-yaml": "^4.1.0"
+  }
+}
