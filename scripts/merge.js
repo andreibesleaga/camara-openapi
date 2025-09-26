@@ -125,11 +125,17 @@ async function mergeApiSpecs() {
         }
       }
 
-    } catch (error) {
-      console.error(`\n--- ERROR processing API: ${api.id} ---`);
+ } catch (error) {
+      // --- REVISED ERROR BLOCK ---
+      // This will provide a more detailed error message if the script crashes.
+      console.error(`\n--- FATAL ERROR processing API: ${api.id} ---`);
       console.error(`URL: ${api.url}`);
-      console.error(error.message);
-      console.error(`--- END ERROR ---\n`);
+      console.error('An unrecoverable error occurred. See details below:');
+      console.error(error); // This prints the full error object, including the stack trace.
+      console.error('--- END FATAL ERROR ---\n');
+      
+      // Exit with a non-zero code to fail the build step explicitly.
+      process.exit(1); 
     }
   }
 
