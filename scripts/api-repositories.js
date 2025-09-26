@@ -3,7 +3,7 @@
 // Last updated and fully validated: 2025-09-26
 const apiDefinitions = [
     // == Authentication and Fraud Prevention ==
-    { id: 'CustomerInsights', repo: 'CustomerInsights', path: 'dev/api-definitions/customer-insights-v0.5.0.yaml' },
+    { id: 'CustomerInsights', repo: 'CustomerInsights', path: 'dev/api-definitions/customer-insights-v0.4.0.yaml' },
     { id: 'DeviceSwap', repo: 'DeviceSwap', path: 'code/api-definitions/device-swap.yaml' },
     { id: 'KnowYourCustomerAgeVerification', repo: 'KnowYourCustomerAgeVerification', path: 'code/api-definitions/kyc-age-verification.yaml' },
     { id: 'KnowYourCustomerFill-in', repo: 'KnowYourCustomerFill-in', path: 'code/api-definitions/kyc-fill-in.yaml' },
