@@ -138,7 +138,7 @@ async function mergeApiSpecs() {
     fs.mkdirSync(outputPath);
   }
   fs.writeFileSync(
-    path.join(outputPath, 'camara-complete.yaml'),
+    path.join(outputPath, 'camara-openapi.yaml'),
     yaml.dump(masterSpec, { noRefs: true, lineWidth: -1, quotingType: '"' }),
     'utf8'
   );

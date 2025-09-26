@@ -1,5 +1,4 @@
 # List of all mature/stable CAMARA APIs to be merged.
-# The 'id' will be used for prefixing paths and components.
 # Last updated: 2025-09-26
 apis:
   # == Authentication and Fraud Prevention ==
@@ -65,7 +64,8 @@ apis:
     url: https://raw.githubusercontent.com/camaraproject/ConnectivityInsights/main/code/API_definitions/connectivity-insights.yaml
   - id: QoD
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/QualityOnDemand/main/code/API_definitions/qod.yaml
+    # FIXED: Filename is now versioned
+    url: https://raw.githubusercontent.com/camaraproject/QualityOnDemand/main/code/API_definitions/qod-v0.5.0.yaml
 
   # == Device Information ==
   - id: DeviceIdentifier
@@ -73,7 +73,9 @@ apis:
     url: https://raw.githubusercontent.com/camaraproject/DeviceIdentifier/main/code/API_definitions/device-identifier.yaml
   - id: DeviceStatus
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/DeviceStatus/main/code/API_definitions/device-status.yaml
+
+    # FIXED: Filename changed from device-status.yaml
+    url: https://raw.githubusercontent.com/camaraproject/DeviceStatus/main/code/API_definitions/roaming-status.yaml
   - id: SimSwap
     enabled: true
     url: https://raw.githubusercontent.com/camaraproject/SimSwap/main/code/API_definitions/sim-swap.yaml
@@ -81,13 +83,16 @@ apis:
   # == Computing Services ==
   - id: DeviceAppInstance
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/DeviceAppInstance/main/code/API_definitions/device-app-instance.yaml
+    # FIXED: Path changed from code/ to dev/ and filename is versioned
+    url: https://raw.githubusercontent.com/camaraproject/DeviceAppInstance/main/dev/api-definitions/device-app-instance-v0.1.0.yaml
 
   # == Payments and Charging ==
   - id: Charging
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/Charging/main/code/API_definitions/charging.yaml
+    # FIXED: Path changed from code/ to dev/ and filename is versioned
+    url: https://raw.githubusercontent.com/camaraproject/Charging/main/dev/api-definitions/charging-v0.1.0.yaml
   - id: Payment
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/Payment/main/code/API_definitions/payment.yaml
+    # FIXED: Path changed from code/ to dev/ and filename is versioned
+    url: https://raw.githubusercontent.com/camaraproject/Payment/main/dev/api-definitions/payment-v0.1.0.yaml
     
