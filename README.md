@@ -2,6 +2,8 @@
 
 The Linux Foundation Project - CAMARA (Telco Global API Alliance) [Unofficial]
 
+Auto SDK generated libraries and MCP SDK, based on this CAMARA OpenAPI spec, in: https://github.com/andreibesleaga/camara-sdk
+
 # Unified OpenAPI
 
 This repository aggregates all CAMARA OpenAPI specs into a single file, trying by script and github actions to get remote individual OpenAPI specs for all the stable APIs: https://camaraproject.org/api-overview/
