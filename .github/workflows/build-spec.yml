@@ -1,3 +1,5 @@
+# .github/workflows/build-spec.yml
+
 name: Build and Validate CAMARA OpenAPI Spec
 
 on:
@@ -5,18 +7,20 @@ on:
     branches:
       - main
   schedule:
-    - cron: "0 0 * * 1" # Run every Monday at midnight UTC
-  workflow_dispatch: # Allows manual triggering
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     permissions:
       contents: write
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -28,8 +32,13 @@ jobs:
       - name: Build Master OpenAPI Spec
         run: npm run build
 
+      # --- DEBUGGING STEP ADDED ---
+      # This will show us all the files in the directory after the build.
+      - name: Verify file creation
+        run: ls -R
+
       - name: Validate OpenAPI Spec
-        run: npx @redocly/cli lint dist/camara-openapi.yaml
+        run: npx @redocly/cli lint --config .redocly.yaml
 
       - name: Commit and Push Changes
         uses: stefanzweifel/git-auto-commit-action@v5
