@@ -3,8 +3,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const yaml = require('js-yaml');
 const SwaggerParser = require('@apidevtools/swagger-parser');
-const semver = require('semver');
-const apiRepositories = require('./api-repositories');
+const apiDefinitions = require('./api-repositories'); // Using the new manifest file
 
 const ORG_NAME = 'camaraproject';
 const TEMP_CLONE_DIR = path.join(__dirname, 'temp_clones');
@@ -13,117 +12,56 @@ function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Rewritten discovery logic for clarity and robustness with detailed logging.
-function findLatestApiFile(directory) {
-    console.log(`   -> Searching in directory: ${directory}`);
-    if (!fs.existsSync(directory)) {
-        console.log(`      - Directory does not exist.`);
-        return null;
-    }
-
-    const files = fs.readdirSync(directory);
-    let candidateFiles = [];
-
-    for (const file of files) {
-        if (file.startsWith('.') || (!file.endsWith('.yaml') && !file.endsWith('.yml'))) {
-            continue; // Skip dotfiles and non-yaml files
-        }
-
-        const filePath = path.join(directory, file);
-        if (!fs.statSync(filePath).isFile()) {
-            continue; // Skip directories
-        }
-        
-        console.log(`      - Found potential file: ${file}`);
-        try {
-            const content = fs.readFileSync(filePath, 'utf8');
-            const doc = yaml.load(content);
-
-            if (doc && (doc.openapi || doc.swagger)) {
-                const versionMatch = file.match(/v(\d+\.\d+\.\d+)/);
-                candidateFiles.push({
-                    path: filePath,
-                    name: file,
-                    version: versionMatch ? versionMatch[1] : '0.0.0' // Default for non-versioned files
-                });
-                console.log(`         - PASSED VALIDATION: It's a valid OpenAPI file.`);
-            } else {
-                 console.log(`         - FAILED VALIDATION: Missing 'openapi' or 'swagger' key.`);
-            }
-        } catch (e) {
-            console.log(`         - FAILED VALIDATION: Could not parse YAML. Error: ${e.message}`);
-        }
-    }
-
-    if (candidateFiles.length === 0) {
-        return null;
-    }
-
-    // Sort by semantic version, descending
-    candidateFiles.sort((a, b) => semver.rcompare(a.version, b.version));
-    
-    const bestChoice = candidateFiles[0];
-    console.log(`   -> Selected latest version: ${bestChoice.name}`);
-    return bestChoice;
-}
-
-
-async function discoverApiUrlsByCloning() {
+async function fetchApisFromManifest() {
     if (fs.existsSync(TEMP_CLONE_DIR)) {
         fs.rmSync(TEMP_CLONE_DIR, { recursive: true, force: true });
     }
     fs.mkdirSync(TEMP_CLONE_DIR);
 
-    console.log(`Discovering latest API files by cloning ${apiRepositories.length} repositories...`);
+    console.log(`Fetching ${apiDefinitions.length} APIs based on the definitive manifest...`);
     const discoveredApis = [];
+    const clonedRepos = new Set();
 
-    for (const repoName of apiRepositories) {
-        const repoUrl = `https://github.com/${ORG_NAME}/${repoName}.git`;
-        const clonePath = path.join(TEMP_CLONE_DIR, repoName);
+    for (const api of apiDefinitions) {
         try {
-            console.log(`\n-> Cloning repository: ${repoName}`);
-            execSync(`git clone --depth 1 ${repoUrl} "${clonePath}"`, { stdio: 'pipe' });
+            const clonePath = path.join(TEMP_CLONE_DIR, api.repo);
 
-            const potentialPaths = [
-                clonePath, // Root directory
-                path.join(clonePath, 'dev', 'api-definitions'),
-                path.join(clonePath, 'code', 'api-definitions')
-            ];
-
-            let foundFile = null;
-            for (const apiPath of potentialPaths) {
-                const file = findLatestApiFile(apiPath);
-                if (file) {
-                    foundFile = file;
-                    break; 
-                }
+            // Clone the repository only if we haven't already
+            if (!clonedRepos.has(api.repo)) {
+                console.log(`\n-> Cloning repository: ${api.repo}`);
+                const repoUrl = `https://github.com/${ORG_NAME}/${api.repo}.git`;
+                execSync(`git clone --depth 1 ${repoUrl} "${clonePath}"`, { stdio: 'pipe' });
+                clonedRepos.add(api.repo);
             }
-            
-            if (foundFile) {
-                console.log(`   - SUCCESS: Final selection for ${repoName} is ${foundFile.name}`);
-                discoveredApis.push({ id: repoName, url: foundFile.path });
+
+            const apiFilePath = path.join(clonePath, api.path);
+
+            if (fs.existsSync(apiFilePath)) {
+                console.log(`   - SUCCESS: Located API '${api.id}' at '${api.path}'`);
+                discoveredApis.push({ id: api.id, url: apiFilePath });
             } else {
-                 console.warn(`   - WARNING: No valid OpenAPI file found in any standard location for repository '${repoName}'.`);
+                console.error(`   - FATAL ERROR: Could not find specified file for API '${api.id}'. Path does not exist: ${apiFilePath}`);
+                // In this new model, a missing file is a critical error.
+                process.exit(1); 
             }
 
         } catch (error) {
-            console.error(`   - FAILED to clone or process repository ${repoName}: ${error.message}`);
+            console.error(`   - FAILED to clone or process repository for API '${api.id}': ${error.message}`);
         }
     }
 
-    console.log(`\nDiscovery complete. Found ${discoveredApis.length} valid API specifications.\n`);
+    console.log(`\nFetch complete. Found ${discoveredApis.length} valid API specifications.\n`);
     return discoveredApis;
 }
-
 
 async function mergeApiSpecs(apiList) {
     console.log('Starting merge process...');
     const masterSpec = {
         openapi: '3.0.3',
         info: {
-            title: 'CAMARA Complete Unified API (Dynamically Generated)',
+            title: 'CAMARA Complete Unified API (Manifest-Based)',
             version: new Date().toISOString(),
-            description: 'A single OpenAPI spec generated by discovering and merging all active CAMARA project APIs.',
+            description: 'A single OpenAPI spec generated by fetching and merging all CAMARA project APIs based on a definitive manifest.',
             license: { name: 'Apache 2.0', url: 'https://www.apache.org/licenses/LICENSE-2.0.html' },
         },
         servers: [{ url: 'https://api.example.com/camara', description: 'Example Production Server' }],
@@ -214,13 +152,12 @@ async function mergeApiSpecs(apiList) {
     fs.rmSync(TEMP_CLONE_DIR, { recursive: true, force: true });
 }
 
-
 async function main() {
-    const apiList = await discoverApiUrlsByCloning();
+    const apiList = await fetchApisFromManifest();
     if (apiList && apiList.length > 0) {
         await mergeApiSpecs(apiList);
     } else {
-        console.error('No APIs were discovered. Halting build.');
+        console.error('No APIs were located based on the manifest. Halting build.');
         process.exit(1);
     }
 }
