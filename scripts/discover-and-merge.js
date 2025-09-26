@@ -134,14 +134,15 @@ async function mergeApiSpecs(discoveredApis) {
     for (const api of discoveredApis) {
          console.log(`-> Merging API: ${api.id}`);
          
-         // Copy original file
-         fs.copyFileSync(api.path, path.join(originalsPath, `${api.id}.yaml`));
-         console.log(`   - Copied original file to dist/original/${api.id}.yaml`);
 
-         // Bundle the spec once. We will use this for both the individual API file and the main merge.
+         const originalContent = fs.readFileSync(api.path, 'utf8');
+         fs.writeFileSync(path.join(originalsPath, `${api.id}.yaml`), originalContent, 'utf8');
+         console.log(`   - Saved original file to dist/original/${api.id}.yaml`);
+
+         // Bundle the spec from the original path for all other operations.
          const spec = await SwaggerParser.bundle(api.path);
 
-         // Save the individually bundled API
+         // Save the individually bundled API to the 'apis' directory.
          fs.writeFileSync(path.join(apisPath, `${api.id}.yaml`), yaml.dump(spec, { noRefs: true, lineWidth: -1 }), 'utf8');
          console.log(`   - Saved bundled API to dist/apis/${api.id}.yaml`);
          
