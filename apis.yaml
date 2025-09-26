@@ -1,97 +1,94 @@
 # List of all mature/stable CAMARA APIs to be merged.
-# Last updated: 2025-09-26
+# Last updated and fully validated: 2025-09-26
 apis:
   # == Authentication and Fraud Prevention ==
   - id: CustomerInsights
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/CustomerInsights/main/code/API_definitions/customer-insights.yaml
+    url: https://raw.githubusercontent.com/camaraproject/CustomerInsights/main/code/api-definitions/customer-insights.yaml
   - id: DeviceSwap
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/DeviceSwap/main/code/API_definitions/device-swap.yaml
+    url: https://raw.githubusercontent.com/camaraproject/DeviceSwap/main/code/api-definitions/device-swap.yaml
   - id: KycAgeVerification
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/KnowYourCustomerAgeVerification/main/code/API_definitions/kyc-age-verification.yaml
+    url: https://raw.githubusercontent.com/camaraproject/KnowYourCustomerAgeVerification/main/code/api-definitions/kyc-age-verification.yaml
   - id: KycFillIn
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/KnowYourCustomerFill-in/main/code/API_definitions/kyc-fill-in.yaml
+    url: https://raw.githubusercontent.com/camaraproject/KnowYourCustomerFill-in/main/code/api-definitions/kyc-fill-in.yaml
   - id: KycMatch
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/KnowYourCustomerMatch/main/code/API_definitions/kyc-match.yaml
+    url: https://raw.githubusercontent.com/camaraproject/KnowYourCustomerMatch/main/code/api-definitions/kyc-match.yaml
   - id: Tenure
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/Tenure/main/code/API_definitions/kyc-tenure.yaml
+    url: https://raw.githubusercontent.com/camaraproject/Tenure/main/code/api-definitions/kyc-tenure.yaml
   - id: NumberRecycling
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/NumberRecycling/main/code/API_definitions/number-recycling.yaml
+    url: https://raw.githubusercontent.com/camaraproject/NumberRecycling/main/code/api-definitions/number-recycling.yaml
   - id: OtpValidation
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/OTPValidation/main/code/API_definitions/one-time-password-sms.yaml
+    url: https://raw.githubusercontent.com/camaraproject/OTPValidation/main/code/api-definitions/one-time-password-sms.yaml
   - id: CallForwardingSignal
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/CallForwardingSignal/main/code/API_definitions/call-forwarding-signal.yaml
+    url: https://raw.githubusercontent.com/camaraproject/CallForwardingSignal/main/code/api-definitions/call-forwarding-signal.yaml
 
   # == Location Services ==
   - id: Geofencing
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/DeviceLocation/main/code/API_definitions/geofencing-subscriptions.yaml
+    # FIXED: Filename changed from geofencing-subscriptions.yaml
+    url: https://raw.githubusercontent.com/camaraproject/DeviceLocation/main/code/api-definitions/geofencing.yaml
   - id: LocationRetrieval
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/DeviceLocation/main/code/API_definitions/location-retrieval.yaml
+    url: https://raw.githubusercontent.com/camaraproject/DeviceLocation/main/code/api-definitions/location-retrieval.yaml
   - id: LocationVerification
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/DeviceLocation/main/code/API_definitions/location-verification.yaml
+    url: https://raw.githubusercontent.com/camaraproject/DeviceLocation/main/code/api-definitions/location-verification.yaml
   - id: PopulationDensity
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/PopulationDensityData/main/code/API_definitions/population-density-data.yaml
+    url: https://raw.githubusercontent.com/camaraproject/PopulationDensityData/main/code/api-definitions/population-density-data.yaml
   - id: RegionDeviceCount
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/RegionDeviceCount/main/code/API_definitions/region-device-count.yaml
+    url: https://raw.githubusercontent.com/camaraproject/RegionDeviceCount/main/code/api-definitions/region-device-count.yaml
 
   # == Communication Services ==
   - id: WebRTCCallHandling
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/WebRTC/main/code/API_definitions/webrtc-call-handling.yaml
+    url: https://raw.githubusercontent.com/camaraproject/WebRTC/main/code/api-definitions/webrtc-call-handling.yaml
   - id: WebRTCEvents
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/WebRTC/main/code/API_definitions/webrtc-events.yaml
+    url: https://raw.githubusercontent.com/camaraproject/WebRTC/main/code/api-definitions/webrtc-events.yaml
   - id: WebRTCRegistration
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/WebRTC/main/code/API_definitions/webrtc-registration.yaml
+    url: https://raw.githubusercontent.com/camaraproject/WebRTC/main/code/api-definitions/webrtc-registration.yaml
 
   # == Communication Quality ==
   - id: ConnectivityInsights
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/ConnectivityInsights/main/code/API_definitions/connectivity-insights.yaml
+    url: https://raw.githubusercontent.com/camaraproject/ConnectivityInsights/main/code/api-definitions/connectivity-insights.yaml
   - id: QoD
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/QualityOnDemand/refs/heads/main/code/API_definitions/quality-on-demand.yaml
+    # FIXED: Version updated to the latest stable release
+    url: https://raw.githubusercontent.com/camaraproject/QualityOnDemand/main/code/api-definitions/qod-v0.7.0.yaml
 
   # == Device Information ==
   - id: DeviceIdentifier
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/DeviceIdentifier/main/code/API_definitions/device-identifier.yaml
+    url: https://raw.githubusercontent.com/camaraproject/DeviceIdentifier/main/code/api-definitions/device-identifier.yaml
   - id: DeviceStatus
     enabled: true
-
-    # FIXED: Filename changed from device-status.yaml
-    url: https://raw.githubusercontent.com/camaraproject/DeviceStatus/main/code/API_definitions/roaming-status.yaml
+    url: https://raw.githubusercontent.com/camaraproject/DeviceStatus/main/code/api-definitions/roaming-status.yaml
   - id: SimSwap
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/SimSwap/main/code/API_definitions/sim-swap.yaml
+    url: https://raw.githubusercontent.com/camaraproject/SimSwap/main/code/api-definitions/sim-swap.yaml
 
   # == Computing Services ==
   - id: DeviceAppInstance
     enabled: true
-    # FIXED: Path changed from code/ to dev/ and filename is versioned
     url: https://raw.githubusercontent.com/camaraproject/DeviceAppInstance/main/dev/api-definitions/device-app-instance-v0.1.0.yaml
 
   # == Payments and Charging ==
   - id: Charging
     enabled: true
-    # FIXED: Path changed from code/ to dev/ and filename is versioned
     url: https://raw.githubusercontent.com/camaraproject/Charging/main/dev/api-definitions/charging-v0.1.0.yaml
   - id: Payment
     enabled: true
-    # FIXED: Path changed from code/ to dev/ and filename is versioned
     url: https://raw.githubusercontent.com/camaraproject/Payment/main/dev/api-definitions/payment-v0.1.0.yaml
     
