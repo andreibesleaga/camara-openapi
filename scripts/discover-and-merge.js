@@ -13,57 +13,60 @@ function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// This function checks if a file is a REAL OpenAPI spec by reading its content.
-function isValidOpenApiFile(filePath) {
-    try {
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        // Ignore files that are clearly not OpenAPI specs (e.g., small config files)
-        if (fileContent.length < 50) return false;
-        
-        const doc = yaml.load(fileContent);
-        return doc && (doc.openapi || doc.swagger);
-    } catch (e) {
-        // Not a valid YAML or other error
-        return false;
-    }
-}
-
-function getLatestVersionedFile(files, dirPath) {
-    const validApiFiles = files.filter(fileName => isValidOpenApiFile(path.join(dirPath, fileName)));
-
-    const versionedFiles = validApiFiles
-        .map(fileName => {
-            const match = fileName.match(/v(\d+\.\d+\.\d+)/);
-            return match ? { name: fileName, version: match[1], path: path.join(dirPath, fileName) } : null;
-        })
-        .filter(Boolean);
-
-    if (versionedFiles.length === 0) {
-        const nonVersionedFile = validApiFiles[0]; // Pick the first valid one found
-        return nonVersionedFile ? { name: nonVersionedFile, path: path.join(dirPath, nonVersionedFile) } : null;
-    }
-
-    versionedFiles.sort((a, b) => semver.rcompare(a.version, b.version));
-    return versionedFiles[0];
-}
-
-function findApiFileInDir(dirPath) {
-    if (!fs.existsSync(dirPath)) {
+// Rewritten discovery logic for clarity and robustness with detailed logging.
+function findLatestApiFile(directory) {
+    console.log(`   -> Searching in directory: ${directory}`);
+    if (!fs.existsSync(directory)) {
+        console.log(`      - Directory does not exist.`);
         return null;
     }
-    const entries = fs.readdirSync(dirPath);
-    // Ignore dotfiles like .spectral.yml immediately.
-    const yamlFiles = entries.filter(file => 
-        fs.statSync(path.join(dirPath, file)).isFile() &&
-        (file.endsWith('.yaml') || file.endsWith('.yml')) &&
-        !file.startsWith('.') 
-    );
 
-    if (yamlFiles.length > 0) {
-        return getLatestVersionedFile(yamlFiles, dirPath);
+    const files = fs.readdirSync(directory);
+    let candidateFiles = [];
+
+    for (const file of files) {
+        if (file.startsWith('.') || (!file.endsWith('.yaml') && !file.endsWith('.yml'))) {
+            continue; // Skip dotfiles and non-yaml files
+        }
+
+        const filePath = path.join(directory, file);
+        if (!fs.statSync(filePath).isFile()) {
+            continue; // Skip directories
+        }
+        
+        console.log(`      - Found potential file: ${file}`);
+        try {
+            const content = fs.readFileSync(filePath, 'utf8');
+            const doc = yaml.load(content);
+
+            if (doc && (doc.openapi || doc.swagger)) {
+                const versionMatch = file.match(/v(\d+\.\d+\.\d+)/);
+                candidateFiles.push({
+                    path: filePath,
+                    name: file,
+                    version: versionMatch ? versionMatch[1] : '0.0.0' // Default for non-versioned files
+                });
+                console.log(`         - PASSED VALIDATION: It's a valid OpenAPI file.`);
+            } else {
+                 console.log(`         - FAILED VALIDATION: Missing 'openapi' or 'swagger' key.`);
+            }
+        } catch (e) {
+            console.log(`         - FAILED VALIDATION: Could not parse YAML. Error: ${e.message}`);
+        }
     }
-    return null;
+
+    if (candidateFiles.length === 0) {
+        return null;
+    }
+
+    // Sort by semantic version, descending
+    candidateFiles.sort((a, b) => semver.rcompare(a.version, b.version));
+    
+    const bestChoice = candidateFiles[0];
+    console.log(`   -> Selected latest version: ${bestChoice.name}`);
+    return bestChoice;
 }
+
 
 async function discoverApiUrlsByCloning() {
     if (fs.existsSync(TEMP_CLONE_DIR)) {
@@ -78,7 +81,7 @@ async function discoverApiUrlsByCloning() {
         const repoUrl = `https://github.com/${ORG_NAME}/${repoName}.git`;
         const clonePath = path.join(TEMP_CLONE_DIR, repoName);
         try {
-            console.log(`-> Cloning repository: ${repoName}`);
+            console.log(`\n-> Cloning repository: ${repoName}`);
             execSync(`git clone --depth 1 ${repoUrl} "${clonePath}"`, { stdio: 'pipe' });
 
             const potentialPaths = [
@@ -89,18 +92,18 @@ async function discoverApiUrlsByCloning() {
 
             let foundFile = null;
             for (const apiPath of potentialPaths) {
-                const file = findApiFileInDir(apiPath);
+                const file = findLatestApiFile(apiPath);
                 if (file) {
                     foundFile = file;
-                    break;
+                    break; 
                 }
             }
             
             if (foundFile) {
-                console.log(`   - SUCCESS: Found and validated API file: ${foundFile.name}`);
+                console.log(`   - SUCCESS: Final selection for ${repoName} is ${foundFile.name}`);
                 discoveredApis.push({ id: repoName, url: foundFile.path });
             } else {
-                 console.warn(`   - WARNING: No valid OpenAPI file found in standard locations for repository '${repoName}'.`);
+                 console.warn(`   - WARNING: No valid OpenAPI file found in any standard location for repository '${repoName}'.`);
             }
 
         } catch (error) {
