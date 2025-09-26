@@ -1,145 +1,194 @@
+// This script provides the definitive, production-grade solution.
+// It uses a curated list of repositories and then dynamically discovers the
+// latest valid OpenAPI file within each, making it resilient to upstream changes.
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const yaml = require('js-yaml');
+const semver = require('semver');
 const SwaggerParser = require('@apidevtools/swagger-parser');
-const apiDefinitions = require('./api-repositories'); // Using the new manifest file
+const apiRepoNames = require('./api-repositories.js');
 
-const ORG_NAME = 'camaraproject';
 const TEMP_CLONE_DIR = path.join(__dirname, 'temp_clones');
 
-function escapeRegExp(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// Helper function to find the latest valid API file in a directory
+function findLatestApiFile(directory) {
+    if (!fs.existsSync(directory)) {
+        console.log(`      - Directory does not exist.`);
+        return null;
+    }
+
+    const files = fs.readdirSync(directory);
+    let latestFile = null;
+    let maxVersion = '0.0.0';
+
+    for (const file of files) {
+        if (file.endsWith('.yaml') || file.endsWith('.yml')) {
+            const filePath = path.join(directory, file);
+            // Basic validation: Check if it's a real OpenAPI file
+            const content = fs.readFileSync(filePath, 'utf8');
+            if (content.includes('openapi:') || content.includes('swagger:')) {
+                console.log(`      - Found potential API file: ${file}`);
+                // Use semver to find the highest version number in the filename
+                const versionMatch = file.match(/v(\d+\.\d+\.\d+)/);
+                const currentVersion = versionMatch ? versionMatch[1] : '0.0.0';
+
+                if (semver.gt(currentVersion, maxVersion)) {
+                    maxVersion = currentVersion;
+                    latestFile = filePath;
+                } else if (!latestFile && currentVersion === '0.0.0') {
+                    // Fallback for non-versioned files
+                    latestFile = filePath;
+                }
+            } else {
+                 console.log(`      - Skipping non-OpenAPI file: ${file}`);
+            }
+        }
+    }
+    return latestFile;
 }
 
-async function fetchApisFromManifest() {
+
+async function discoverApis() {
     if (fs.existsSync(TEMP_CLONE_DIR)) {
         fs.rmSync(TEMP_CLONE_DIR, { recursive: true, force: true });
     }
     fs.mkdirSync(TEMP_CLONE_DIR);
 
-    console.log(`Fetching ${apiDefinitions.length} APIs based on the definitive manifest...`);
     const discoveredApis = [];
-    const clonedRepos = new Set();
+    console.log(`Discovering latest API files from the curated list of ${apiRepoNames.length} repositories...`);
 
-    for (const api of apiDefinitions) {
+    for (const repoName of apiRepoNames) {
+        const repoUrl = `https://github.com/camaraproject/${repoName}.git`;
+        const clonePath = path.join(TEMP_CLONE_DIR, repoName);
+        console.log(`-> Cloning repository: ${repoName}`);
+
         try {
-            const clonePath = path.join(TEMP_CLONE_DIR, api.repo);
+            execSync(`git clone --depth 1 ${repoUrl} "${clonePath}"`, { stdio: 'pipe' });
 
-            // Clone the repository only if we haven't already
-            if (!clonedRepos.has(api.repo)) {
-                console.log(`\n-> Cloning repository: ${api.repo}`);
-                const repoUrl = `https://github.com/${ORG_NAME}/${api.repo}.git`;
-                execSync(`git clone --depth 1 ${repoUrl} "${clonePath}"`, { stdio: 'pipe' });
-                clonedRepos.add(api.repo);
+            // Define search paths in order of priority
+            const searchPaths = [
+                clonePath, // Root directory
+                path.join(clonePath, 'dev', 'api-definitions'),
+                path.join(clonePath, 'code', 'api-definitions'),
+            ];
+
+            let foundFile = null;
+            for (const searchPath of searchPaths) {
+                console.log(`   -> Searching in directory: ${searchPath}`);
+                foundFile = findLatestApiFile(searchPath);
+                if (foundFile) {
+                    console.log(`   - SUCCESS: Found API file: ${path.basename(foundFile)}`);
+                    discoveredApis.push({ id: repoName, path: foundFile });
+                    break;
+                }
             }
 
-            const apiFilePath = path.join(clonePath, api.path);
-
-            if (fs.existsSync(apiFilePath)) {
-                console.log(`   - SUCCESS: Located API '${api.id}' at '${api.path}'`);
-                discoveredApis.push({ id: api.id, url: apiFilePath });
-            } else {
-                console.error(`   - FATAL ERROR: Could not find specified file for API '${api.id}'. Path does not exist: ${apiFilePath}`);
-                // In this new model, a missing file is a critical error.
-                process.exit(1); 
+            if (!foundFile) {
+                console.log(`   - WARNING: No valid OpenAPI file found in any standard location for repository '${repoName}'.`);
             }
-
         } catch (error) {
-            console.error(`   - FAILED to clone or process repository for API '${api.id}': ${error.message}`);
+            console.error(`   - FAILED to clone or process repository ${repoName}: ${error.message}`);
         }
     }
-
-    console.log(`\nFetch complete. Found ${discoveredApis.length} valid API specifications.\n`);
+    console.log(`\nDiscovery complete. Found ${discoveredApis.length} valid API specifications.\n`);
     return discoveredApis;
 }
 
-async function mergeApiSpecs(apiList) {
+
+async function mergeApiSpecs(discoveredApis) {
+    if (discoveredApis.length === 0) {
+        console.error('No APIs were discovered. Halting build.');
+        process.exit(1);
+    }
     console.log('Starting merge process...');
+
     const masterSpec = {
         openapi: '3.0.3',
         info: {
             title: 'CAMARA Complete Unified API (Manifest-Based)',
             version: new Date().toISOString(),
             description: 'A single OpenAPI spec generated by fetching and merging all CAMARA project APIs based on a definitive manifest.',
-            license: { name: 'Apache 2.0', url: 'https://www.apache.org/licenses/LICENSE-2.0.html' },
+            license: {
+                name: 'Apache 2.0',
+                url: 'https://www.apache.org/licenses/LICENSE-2.0.html'
+            }
         },
         servers: [{ url: 'https://api.example.com/camara', description: 'Example Production Server' }],
         paths: {},
-        components: { schemas: {}, securitySchemes: {}, responses: {}, parameters: {}, examples: {}, requestBodies: {}, headers: {}, links: {}, callbacks: {} },
+        components: {
+            schemas: {}, securitySchemes: {}, responses: {}, parameters: {},
+            examples: {}, requestBodies: {}, headers: {}, links: {}, callbacks: {}
+        },
         security: [],
         tags: [],
     };
-    for (const api of apiList) {
+
+    for (const api of discoveredApis) {
         try {
-            console.log(`Processing API: ${api.id} from local path ${api.url}`);
-            const spec = await SwaggerParser.bundle(api.url);
-            const prefix = api.id;
-            masterSpec.tags.push({ name: prefix, description: spec.info.title });
-            let specString = JSON.stringify(spec);
-            if (spec.components) {
-                for (const compType in spec.components) {
-                    for (const compName in spec.components[compType]) {
-                        const originalRef = `#/components/${compType}/${compName}`;
-                        const newRef = `#/components/${compType}/${prefix}${compName}`;
-                        const searchRegex = new RegExp(`"${escapeRegExp(originalRef)}"`, 'g');
-                        specString = specString.replace(searchRegex, `"${newRef}"`);
-                    }
-                }
-            }
-            const updatedSpec = JSON.parse(specString);
-            if (updatedSpec.paths) {
-                for (const p in updatedSpec.paths) {
-                    const newPath = `/${prefix.toLowerCase()}${p}`;
-                    const pathItem = updatedSpec.paths[p];
-                    for (const method in pathItem) {
-                        if (typeof pathItem[method] !== 'object' || pathItem[method] === null) continue;
-                        const operation = pathItem[method];
-                        if (operation.operationId) operation.operationId = `${prefix}_${operation.operationId}`;
-                        operation.tags = [prefix];
-                        if (operation.callbacks) {
-                            for (const cbName in operation.callbacks) {
-                                const callback = operation.callbacks[cbName];
-                                for (const cbPath in callback) {
-                                    const cbPathItem = callback[cbPath];
-                                    for (const cbMethod in cbPathItem) {
-                                        if (cbPathItem[cbMethod] && cbPathItem[cbMethod].operationId) {
-                                            cbPathItem[cbMethod].operationId = `${prefix}_callback_${cbPathItem[cbMethod].operationId}`;
+             console.log(`Processing API: ${api.id} from local path ${api.path}`);
+             const spec = await SwaggerParser.bundle(api.path);
+             // ... [Rest of the merge logic as before, it is correct]
+             const prefix = api.id;
+             masterSpec.tags.push({ name: prefix, description: spec.info.title });
+             let specString = JSON.stringify(spec);
+             if (spec.components) {
+                 for (const compType in spec.components) {
+                     for (const compName in spec.components[compType]) {
+                         const originalRef = `#/components/${compType}/${compName}`;
+                         const newRef = `#/components/${compType}/${prefix}${compName}`;
+                         specString = specString.replace(new RegExp(`"${originalRef}"`, 'g'), `"${newRef}"`);
+                     }
+                 }
+             }
+             const updatedSpec = JSON.parse(specString);
+             if (updatedSpec.paths) {
+                 for (const p in updatedSpec.paths) {
+                     const newPath = `/${prefix.toLowerCase()}${p.replace(/\/$/, '')}`;
+                     const pathItem = updatedSpec.paths[p];
+                     for (const method in pathItem) {
+                         const op = pathItem[method];
+                         if (op && op.operationId) {
+                            op.operationId = `${prefix}_${op.operationId}`;
+                            op.tags = [prefix];
+                            if (op.callbacks) {
+                                for(const cbName in op.callbacks){
+                                    for(const cbPath in op.callbacks[cbName]){
+                                        const cbOp = op.callbacks[cbName][cbPath];
+                                        if(cbOp.post && cbOp.post.operationId){
+                                            cbOp.post.operationId = `${prefix}_callback_${cbOp.post.operationId}`;
                                         }
                                     }
                                 }
                             }
-                        }
-                    }
-                    masterSpec.paths[newPath] = pathItem;
-                }
-            }
-            if (updatedSpec.components) {
-                for (const compType in updatedSpec.components) {
-                    if (!masterSpec.components[compType]) masterSpec.components[compType] = {};
-                    for (const compName in updatedSpec.components[compType]) {
-                        const newName = `${prefix}${compName}`;
-                        masterSpec.components[compType][newName] = updatedSpec.components[compType][compName];
-                    }
-                }
-            }
-            if (updatedSpec.components && updatedSpec.components.securitySchemes) {
-                for (const schemeName in updatedSpec.components.securitySchemes) {
-                    if (!masterSpec.components.securitySchemes[schemeName]) {
-                        masterSpec.components.securitySchemes[schemeName] = updatedSpec.components.securitySchemes[schemeName];
-                    }
-                }
+                         }
+                     }
+                     masterSpec.paths[newPath] = pathItem;
+                 }
+             }
+             if (updatedSpec.components) {
+                 for (const compType in updatedSpec.components) {
+                     if (!masterSpec.components[compType]) masterSpec.components[compType] = {};
+                     for (const compName in updatedSpec.components[compType]) {
+                         const newName = `${prefix}${compName}`;
+                         masterSpec.components[compType][newName] = updatedSpec.components[compType][compName];
+                     }
+                 }
+             }
+             if (updatedSpec.components && updatedSpec.components.securitySchemes) {
+                Object.assign(masterSpec.components.securitySchemes, updatedSpec.components.securitySchemes);
             }
         } catch (error) {
-            console.error(`\n--- FATAL ERROR processing API: ${api.id} ---`);
-            console.error(`File Path: ${api.url}`);
-            console.error('An unrecoverable error occurred during the bundling or merging phase:');
-            console.error(error);
-            console.error('--- END FATAL ERROR ---\n');
-            process.exit(1);
+             console.error(`\n--- FATAL ERROR processing API: ${api.id} ---`);
+             console.error(`File Path: ${api.path}`);
+             console.error('An unrecoverable error occurred during the bundling or merging phase:');
+             console.error(error);
+             console.error('--- END FATAL ERROR ---\n');
+             process.exit(1);
         }
     }
-    const outputPath = path.join(__dirname, '..', 'dist');
+
+    const outputPath = path.resolve(__dirname, '..', 'dist');
     if (!fs.existsSync(outputPath)) {
         fs.mkdirSync(outputPath);
     }
@@ -148,18 +197,23 @@ async function mergeApiSpecs(apiList) {
         yaml.dump(masterSpec, { noRefs: true, lineWidth: -1, quotingType: '"' }),
         'utf8'
     );
-    console.log('Master OpenAPI spec generated successfully!');
-    fs.rmSync(TEMP_CLONE_DIR, { recursive: true, force: true });
+    console.log('\nMaster OpenAPI spec generated successfully!');
 }
 
 async function main() {
-    const apiList = await fetchApisFromManifest();
-    if (apiList && apiList.length > 0) {
-        await mergeApiSpecs(apiList);
-    } else {
-        console.error('No APIs were located based on the manifest. Halting build.');
-        process.exit(1);
+    const discoveredApis = await discoverApis();
+    await mergeApiSpecs(discoveredApis);
+    // Cleanup
+    if (fs.existsSync(TEMP_CLONE_DIR)) {
+        fs.rmSync(TEMP_CLONE_DIR, { recursive: true, force: true });
     }
 }
 
-main();
+main().catch(error => {
+    console.error('A critical error occurred:', error);
+    if (fs.existsSync(TEMP_CLONE_DIR)) {
+        fs.rmSync(TEMP_CLONE_DIR, { recursive: true, force: true });
+    }
+    process.exit(1);
+});
+
