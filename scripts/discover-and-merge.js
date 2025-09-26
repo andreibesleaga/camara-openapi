@@ -5,25 +5,22 @@ const axios = require('axios');
 const SwaggerParser = require('@apidevtools/swagger-parser');
 const semver = require('semver');
 
+// CRITICAL CHANGE: Import the curated list of repositories.
+const apiRepositories = require('./api-repositories');
+
 const ORG_NAME = 'camaraproject';
 const GITHUB_API_BASE_URL = 'https://api.github.com';
 
-// CRITICAL FIX: Read the token from the environment variables provided by the GitHub Actions workflow.
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const axiosInstance = axios.create({
     baseURL: GITHUB_API_BASE_URL,
-    // Use the token for a much higher rate limit.
     headers: GITHUB_TOKEN ? { 'Authorization': `token ${GITHUB_TOKEN}` } : {},
 });
 
-// Helper function to escape strings for use in a RegExp
 function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/**
- * Finds the latest version of an API file in a list of files.
- */
 function getLatestVersionedFile(files) {
     const versionedFiles = files
         .map(file => {
@@ -40,70 +37,35 @@ function getLatestVersionedFile(files) {
     return versionedFiles[0];
 }
 
-/**
- * Scans a CAMARA repository to find the primary OpenAPI specification file.
- */
 async function findApiFileInRepo(repoName) {
     const potentialPaths = ['dev/api-definitions', 'code/api-definitions'];
-
     for (const apiPath of potentialPaths) {
         try {
             const { data: contents } = await axiosInstance.get(`/repos/${ORG_NAME}/${repoName}/contents/${apiPath}`);
             const yamlFiles = contents.filter(file => file.type === 'file' && (file.name.endsWith('.yaml') || file.name.endsWith('.yml')));
-
             if (yamlFiles.length > 0) {
                 const latestFile = getLatestVersionedFile(yamlFiles);
                 if (latestFile) {
-                    console.log(`   - Found API file: ${latestFile.path}`);
-                    return {
-                        id: repoName,
-                        url: latestFile.download_url,
-                    };
+                    console.log(`   - Found API file in '${repoName}': ${latestFile.path}`);
+                    return { id: repoName, url: latestFile.download_url };
                 }
             }
         } catch (error) {
             if (error.response && error.response.status !== 404) {
-                 // Log rate limit errors explicitly
-                if (error.response.status === 403 || error.response.status === 429) {
-                    console.error(`   - RATE LIMIT ERROR checking ${repoName}. Check GITHUB_TOKEN.`);
-                }
+                console.error(`   - Error checking path ${apiPath} in ${repoName}: ${error.message}`);
             }
         }
     }
+    console.warn(`   - WARNING: No API file found in standard locations for repository '${repoName}'.`);
     return null;
 }
 
-/**
- * Discovers all valid CAMARA API spec URLs by scanning the GitHub organization.
- */
-async function discoverApiUrls() {
-    console.log(`Discovering APIs in the '${ORG_NAME}' GitHub organization...`);
-    const discoveredApis = [];
-
-    try {
-        const { data: repos } = await axiosInstance.get(`/orgs/${ORG_NAME}/repos?per_page=100`);
-        console.log(`Found ${repos.length} repositories. Scanning for API specs...`);
-        
-        // Exclude non-API repos to reduce unnecessary API calls
-        const excludedRepos = new Set(['.github', 'Governance', 'Commonalities', 'IdentityAndConsentManagement', 'ReleaseManagement', 'project-administration', 'tooling', 'EasyCLA']);
-
-        const apiPromises = repos
-            .filter(repo => !repo.archived && !excludedRepos.has(repo.name))
-            .map(async (repo) => {
-                console.log(`-> Checking repo: ${repo.name}`);
-                return await findApiFileInRepo(repo.name);
-            });
-
-        const results = await Promise.all(apiPromises);
-        discoveredApis.push(...results.filter(Boolean));
-
-    } catch (error) {
-        console.error('FATAL: Could not discover APIs from GitHub.', error.message);
-        if (error.response && (error.response.status === 403 || error.response.status === 429)) {
-            console.error('This is likely a GitHub API rate limit issue. Ensure the GITHUB_TOKEN is being passed correctly to the script.');
-        }
-        process.exit(1);
-    }
+// This function now uses the curated list.
+async function discoverApiUrlsFromCuratedList() {
+    console.log(`Discovering latest API files from the curated list of ${apiRepositories.length} repositories...`);
+    const apiPromises = apiRepositories.map(repoName => findApiFileInRepo(repoName));
+    const results = await Promise.all(apiPromises);
+    const discoveredApis = results.filter(Boolean); // Filter out any null results
 
     console.log(`\nDiscovery complete. Found ${discoveredApis.length} valid API specifications.\n`);
     return discoveredApis;
@@ -125,14 +87,12 @@ async function mergeApiSpecs(apiList) {
         security: [],
         tags: [],
     };
-
     for (const api of apiList) {
         try {
             console.log(`Processing API: ${api.id} from ${api.url}`);
             const spec = await SwaggerParser.bundle(api.url);
             const prefix = api.id;
             masterSpec.tags.push({ name: prefix, description: spec.info.title });
-            
             let specString = JSON.stringify(spec);
             if (spec.components) {
                 for (const compType in spec.components) {
@@ -145,7 +105,6 @@ async function mergeApiSpecs(apiList) {
                 }
             }
             const updatedSpec = JSON.parse(specString);
-
             if (updatedSpec.paths) {
                 for (const p in updatedSpec.paths) {
                     const newPath = `/${prefix.toLowerCase()}${p}`;
@@ -197,7 +156,6 @@ async function mergeApiSpecs(apiList) {
             process.exit(1);
         }
     }
-
     const outputPath = path.join(__dirname, '..', 'dist');
     if (!fs.existsSync(outputPath)) {
         fs.mkdirSync(outputPath);
@@ -207,12 +165,11 @@ async function mergeApiSpecs(apiList) {
         yaml.dump(masterSpec, { noRefs: true, lineWidth: -1, quotingType: '"' }),
         'utf8'
     );
-
     console.log('Master OpenAPI spec generated successfully!');
 }
 
 async function main() {
-    const apiList = await discoverApiUrls();
+    const apiList = await discoverApiUrlsFromCuratedList();
     if (apiList && apiList.length > 0) {
         await mergeApiSpecs(apiList);
     } else {
