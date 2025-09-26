@@ -1,0 +1,19 @@
+# .redocly.yaml
+# This file configures the linter to ignore specific, non-critical warnings
+# that originate from the upstream CAMARA source files.
+
+apis:
+  default:
+    root: dist/camara-openapi.yaml
+
+rules:
+  # Ignore warnings about the placeholder server URL. This is expected.
+  no-server-example.com: off
+
+  # Ignore warnings about examples that don't perfectly match their schema.
+  # This is a known issue in some of the source CAMARA files.
+  no-invalid-media-type-examples: off
+
+  # Ignore warnings about defined components that are never used.
+  # This is also a known issue in some of the source CAMARA files.
+  no-unused-components: off
