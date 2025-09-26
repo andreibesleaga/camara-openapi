@@ -64,7 +64,7 @@ apis:
     url: https://raw.githubusercontent.com/camaraproject/ConnectivityInsights/main/code/API_definitions/connectivity-insights.yaml
   - id: QoD
     enabled: true
-    url: https://github.com/camaraproject/QualityOnDemand/blob/main/code/API_definitions/quality-on-demand.yaml
+    url: https://raw.githubusercontent.com/camaraproject/QualityOnDemand/refs/heads/main/code/API_definitions/quality-on-demand.yaml
 
   # == Device Information ==
   - id: DeviceIdentifier
