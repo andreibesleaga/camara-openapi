@@ -1,8 +1,6 @@
 # camara-openapi
 
-[Unofficial]
-
-The Linux Foundation Project - CAMARA (Telco Global API Alliance)
+The Linux Foundation Project - CAMARA (Telco Global API Alliance) [Unofficial]
 
 # Unified OpenAPI
 
