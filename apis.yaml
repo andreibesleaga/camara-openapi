@@ -4,7 +4,8 @@ apis:
   # == Authentication and Fraud Prevention ==
   - id: CustomerInsights
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/CustomerInsights/main/dev/api-definitions/customer-insights-v0.2.0.yaml
+    # FIXED: Version updated from v0.2.0 to v0.3.0
+    url: https://raw.githubusercontent.com/camaraproject/CustomerInsights/main/dev/api-definitions/customer-insights-v0.3.0.yaml
   - id: DeviceSwap
     enabled: true
     url: https://raw.githubusercontent.com/camaraproject/DeviceSwap/main/code/api-definitions/device-swap.yaml
