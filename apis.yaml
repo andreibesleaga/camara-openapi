@@ -59,13 +59,13 @@ apis:
     url: https://raw.githubusercontent.com/camaraproject/WebRTC/main/code/API_definitions/webrtc-registration.yaml
 
   # == Communication Quality ==
-  - id: ConnectivityInsights
+- id: ConnectivityInsights
     enabled: true
     url: https://raw.githubusercontent.com/camaraproject/ConnectivityInsights/main/code/API_definitions/connectivity-insights.yaml
   - id: QoD
     enabled: true
-    # FIXED: Filename is now versioned
-    url: https://raw.githubusercontent.com/camaraproject/QualityOnDemand/main/code/API_definitions/qod-v0.5.0.yaml
+    # FIXED: The file was updated from v0.5.0 to v0.6.0
+    url: https://raw.githubusercontent.com/camaraproject/QualityOnDemand/main/code/API_definitions/qod-v0.6.0.yaml
 
   # == Device Information ==
   - id: DeviceIdentifier
