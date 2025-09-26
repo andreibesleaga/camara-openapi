@@ -59,7 +59,7 @@ apis:
     url: https://raw.githubusercontent.com/camaraproject/WebRTC/main/code/API_definitions/webrtc-registration.yaml
 
   # == Communication Quality ==
-- id: ConnectivityInsights
+  - id: ConnectivityInsights
     enabled: true
     url: https://raw.githubusercontent.com/camaraproject/ConnectivityInsights/main/code/API_definitions/connectivity-insights.yaml
   - id: QoD
