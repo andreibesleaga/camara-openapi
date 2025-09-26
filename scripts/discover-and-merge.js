@@ -1,75 +1,95 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 const yaml = require('js-yaml');
-const axios = require('axios');
 const SwaggerParser = require('@apidevtools/swagger-parser');
 const semver = require('semver');
-
-// CRITICAL CHANGE: Import the curated list of repositories.
 const apiRepositories = require('./api-repositories');
 
 const ORG_NAME = 'camaraproject';
-const GITHUB_API_BASE_URL = 'https://api.github.com';
-
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const axiosInstance = axios.create({
-    baseURL: GITHUB_API_BASE_URL,
-    headers: GITHUB_TOKEN ? { 'Authorization': `token ${GITHUB_TOKEN}` } : {},
-});
+const TEMP_CLONE_DIR = path.join(__dirname, 'temp_clones');
 
 function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function getLatestVersionedFile(files) {
+function getLatestVersionedFile(files, dirPath) {
     const versionedFiles = files
-        .map(file => {
-            const match = file.name.match(/v(\d+\.\d+\.\d+)/);
-            return match ? { ...file, version: match[1] } : null;
+        .map(fileName => {
+            const match = fileName.match(/v(\d+\.\d+\.\d+)/);
+            return match ? { name: fileName, version: match[1], path: path.join(dirPath, fileName) } : null;
         })
         .filter(Boolean);
 
     if (versionedFiles.length === 0) {
-        return files.find(f => f.name.endsWith('.yaml') || f.name.endsWith('.yml'));
+        const nonVersionedFile = files.find(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+        return nonVersionedFile ? { name: nonVersionedFile, path: path.join(dirPath, nonVersionedFile) } : null;
     }
 
     versionedFiles.sort((a, b) => semver.rcompare(a.version, b.version));
     return versionedFiles[0];
 }
 
-async function findApiFileInRepo(repoName) {
-    const potentialPaths = ['dev/api-definitions', 'code/api-definitions'];
-    for (const apiPath of potentialPaths) {
-        try {
-            const { data: contents } = await axiosInstance.get(`/repos/${ORG_NAME}/${repoName}/contents/${apiPath}`);
-            const yamlFiles = contents.filter(file => file.type === 'file' && (file.name.endsWith('.yaml') || file.name.endsWith('.yml')));
-            if (yamlFiles.length > 0) {
-                const latestFile = getLatestVersionedFile(yamlFiles);
-                if (latestFile) {
-                    console.log(`   - Found API file in '${repoName}': ${latestFile.path}`);
-                    return { id: repoName, url: latestFile.download_url };
-                }
-            }
-        } catch (error) {
-            if (error.response && error.response.status !== 404) {
-                console.error(`   - Error checking path ${apiPath} in ${repoName}: ${error.message}`);
-            }
-        }
+function findApiFileInDir(dirPath) {
+    if (!fs.existsSync(dirPath)) {
+        return null;
     }
-    console.warn(`   - WARNING: No API file found in standard locations for repository '${repoName}'.`);
+    const files = fs.readdirSync(dirPath);
+    const yamlFiles = files.filter(file => fs.statSync(path.join(dirPath, file)).isFile() && (file.endsWith('.yaml') || file.endsWith('.yml')));
+    if (yamlFiles.length > 0) {
+        return getLatestVersionedFile(yamlFiles, dirPath);
+    }
     return null;
 }
 
-// This function now uses the curated list.
-async function discoverApiUrlsFromCuratedList() {
-    console.log(`Discovering latest API files from the curated list of ${apiRepositories.length} repositories...`);
-    const apiPromises = apiRepositories.map(repoName => findApiFileInRepo(repoName));
-    const results = await Promise.all(apiPromises);
-    const discoveredApis = results.filter(Boolean); // Filter out any null results
+async function discoverApiUrlsByCloning() {
+    if (fs.existsSync(TEMP_CLONE_DIR)) {
+        fs.rmSync(TEMP_CLONE_DIR, { recursive: true, force: true });
+    }
+    fs.mkdirSync(TEMP_CLONE_DIR);
+
+    console.log(`Discovering latest API files by cloning ${apiRepositories.length} repositories...`);
+    const discoveredApis = [];
+
+    for (const repoName of apiRepositories) {
+        const repoUrl = `https://github.com/${ORG_NAME}/${repoName}.git`;
+        const clonePath = path.join(TEMP_CLONE_DIR, repoName);
+        try {
+            console.log(`-> Cloning repository: ${repoName}`);
+            // Use stdio: 'pipe' to suppress verbose clone output unless there's an error
+            execSync(`git clone --depth 1 ${repoUrl} "${clonePath}"`, { stdio: 'pipe' });
+
+            const potentialPaths = [
+                clonePath, // Root directory
+                path.join(clonePath, 'dev', 'api-definitions'),
+                path.join(clonePath, 'code', 'api-definitions')
+            ];
+
+            let foundFile = null;
+            for (const apiPath of potentialPaths) {
+                const file = findApiFileInDir(apiPath);
+                if (file) {
+                    foundFile = file;
+                    break;
+                }
+            }
+            
+            if (foundFile) {
+                console.log(`   - SUCCESS: Found API file: ${foundFile.name}`);
+                discoveredApis.push({ id: repoName, url: foundFile.path });
+            } else {
+                 console.warn(`   - WARNING: No API file found in standard locations for repository '${repoName}'.`);
+            }
+
+        } catch (error) {
+            console.error(`   - FAILED to clone or process repository ${repoName}: ${error.message}`);
+        }
+    }
 
     console.log(`\nDiscovery complete. Found ${discoveredApis.length} valid API specifications.\n`);
     return discoveredApis;
 }
+
 
 async function mergeApiSpecs(apiList) {
     console.log('Starting merge process...');
@@ -89,7 +109,8 @@ async function mergeApiSpecs(apiList) {
     };
     for (const api of apiList) {
         try {
-            console.log(`Processing API: ${api.id} from ${api.url}`);
+            // The URL is now a local file path
+            console.log(`Processing API: ${api.id} from local path ${api.url}`);
             const spec = await SwaggerParser.bundle(api.url);
             const prefix = api.id;
             masterSpec.tags.push({ name: prefix, description: spec.info.title });
@@ -149,7 +170,7 @@ async function mergeApiSpecs(apiList) {
             }
         } catch (error) {
             console.error(`\n--- FATAL ERROR processing API: ${api.id} ---`);
-            console.error(`URL: ${api.url}`);
+            console.error(`File Path: ${api.url}`);
             console.error('An unrecoverable error occurred during the bundling or merging phase:');
             console.error(error);
             console.error('--- END FATAL ERROR ---\n');
@@ -166,10 +187,13 @@ async function mergeApiSpecs(apiList) {
         'utf8'
     );
     console.log('Master OpenAPI spec generated successfully!');
+    // Clean up cloned repos
+    fs.rmSync(TEMP_CLONE_DIR, { recursive: true, force: true });
 }
 
+
 async function main() {
-    const apiList = await discoverApiUrlsFromCuratedList();
+    const apiList = await discoverApiUrlsByCloning();
     if (apiList && apiList.length > 0) {
         await mergeApiSpecs(apiList);
     } else {
