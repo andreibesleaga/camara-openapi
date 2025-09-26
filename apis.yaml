@@ -65,7 +65,7 @@ apis:
   - id: QoD
     enabled: true
     # FIXED: The file was updated from v0.5.0 to v0.6.0
-    url: https://raw.githubusercontent.com/camaraproject/QualityOnDemand/main/code/API_definitions/qod-v0.6.0.yaml
+    url: https://raw.githubusercontent.com/camaraproject/QualityOnDemand/main/code/api-definitions/qod-v0.6.0.yaml
 
   # == Device Information ==
   - id: DeviceIdentifier
