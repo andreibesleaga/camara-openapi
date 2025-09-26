@@ -9,6 +9,7 @@
     "build": "node scripts/merge.js"
   },
   "dependencies": {
+    "@apidevtools/swagger-parser": "^10.1.0",    
     "@redocly/cli": "^1.11.0",
     "axios": "^1.7.2",
     "js-yaml": "^4.1.0"
