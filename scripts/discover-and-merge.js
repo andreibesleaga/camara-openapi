@@ -13,8 +13,25 @@ function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// This function checks if a file is a REAL OpenAPI spec by reading its content.
+function isValidOpenApiFile(filePath) {
+    try {
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        // Ignore files that are clearly not OpenAPI specs (e.g., small config files)
+        if (fileContent.length < 50) return false;
+        
+        const doc = yaml.load(fileContent);
+        return doc && (doc.openapi || doc.swagger);
+    } catch (e) {
+        // Not a valid YAML or other error
+        return false;
+    }
+}
+
 function getLatestVersionedFile(files, dirPath) {
-    const versionedFiles = files
+    const validApiFiles = files.filter(fileName => isValidOpenApiFile(path.join(dirPath, fileName)));
+
+    const versionedFiles = validApiFiles
         .map(fileName => {
             const match = fileName.match(/v(\d+\.\d+\.\d+)/);
             return match ? { name: fileName, version: match[1], path: path.join(dirPath, fileName) } : null;
@@ -22,7 +39,7 @@ function getLatestVersionedFile(files, dirPath) {
         .filter(Boolean);
 
     if (versionedFiles.length === 0) {
-        const nonVersionedFile = files.find(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+        const nonVersionedFile = validApiFiles[0]; // Pick the first valid one found
         return nonVersionedFile ? { name: nonVersionedFile, path: path.join(dirPath, nonVersionedFile) } : null;
     }
 
@@ -34,8 +51,14 @@ function findApiFileInDir(dirPath) {
     if (!fs.existsSync(dirPath)) {
         return null;
     }
-    const files = fs.readdirSync(dirPath);
-    const yamlFiles = files.filter(file => fs.statSync(path.join(dirPath, file)).isFile() && (file.endsWith('.yaml') || file.endsWith('.yml')));
+    const entries = fs.readdirSync(dirPath);
+    // Ignore dotfiles like .spectral.yml immediately.
+    const yamlFiles = entries.filter(file => 
+        fs.statSync(path.join(dirPath, file)).isFile() &&
+        (file.endsWith('.yaml') || file.endsWith('.yml')) &&
+        !file.startsWith('.') 
+    );
+
     if (yamlFiles.length > 0) {
         return getLatestVersionedFile(yamlFiles, dirPath);
     }
@@ -56,7 +79,6 @@ async function discoverApiUrlsByCloning() {
         const clonePath = path.join(TEMP_CLONE_DIR, repoName);
         try {
             console.log(`-> Cloning repository: ${repoName}`);
-            // Use stdio: 'pipe' to suppress verbose clone output unless there's an error
             execSync(`git clone --depth 1 ${repoUrl} "${clonePath}"`, { stdio: 'pipe' });
 
             const potentialPaths = [
@@ -75,10 +97,10 @@ async function discoverApiUrlsByCloning() {
             }
             
             if (foundFile) {
-                console.log(`   - SUCCESS: Found API file: ${foundFile.name}`);
+                console.log(`   - SUCCESS: Found and validated API file: ${foundFile.name}`);
                 discoveredApis.push({ id: repoName, url: foundFile.path });
             } else {
-                 console.warn(`   - WARNING: No API file found in standard locations for repository '${repoName}'.`);
+                 console.warn(`   - WARNING: No valid OpenAPI file found in standard locations for repository '${repoName}'.`);
             }
 
         } catch (error) {
@@ -109,7 +131,6 @@ async function mergeApiSpecs(apiList) {
     };
     for (const api of apiList) {
         try {
-            // The URL is now a local file path
             console.log(`Processing API: ${api.id} from local path ${api.url}`);
             const spec = await SwaggerParser.bundle(api.url);
             const prefix = api.id;
@@ -187,7 +208,6 @@ async function mergeApiSpecs(apiList) {
         'utf8'
     );
     console.log('Master OpenAPI spec generated successfully!');
-    // Clean up cloned repos
     fs.rmSync(TEMP_CLONE_DIR, { recursive: true, force: true });
 }
 
