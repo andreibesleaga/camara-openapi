@@ -4,7 +4,7 @@ apis:
   # == Authentication and Fraud Prevention ==
   - id: CustomerInsights
     enabled: true
-    url: https://raw.githubusercontent.com/camaraproject/CustomerInsights/main/code/api-definitions/customer-insights.yaml
+    url: https://raw.githubusercontent.com/camaraproject/CustomerInsights/main/dev/api-definitions/customer-insights-v0.1.0.yaml
   - id: DeviceSwap
     enabled: true
     url: https://raw.githubusercontent.com/camaraproject/DeviceSwap/main/code/api-definitions/device-swap.yaml
@@ -33,7 +33,6 @@ apis:
   # == Location Services ==
   - id: Geofencing
     enabled: true
-    # FIXED: Filename changed from geofencing-subscriptions.yaml
     url: https://raw.githubusercontent.com/camaraproject/DeviceLocation/main/code/api-definitions/geofencing.yaml
   - id: LocationRetrieval
     enabled: true
@@ -65,7 +64,6 @@ apis:
     url: https://raw.githubusercontent.com/camaraproject/ConnectivityInsights/main/code/api-definitions/connectivity-insights.yaml
   - id: QoD
     enabled: true
-    # FIXED: Version updated to the latest stable release
     url: https://raw.githubusercontent.com/camaraproject/QualityOnDemand/main/code/api-definitions/qod-v0.7.0.yaml
 
   # == Device Information ==
