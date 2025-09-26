@@ -1,12 +1,14 @@
 # camara-openapi
 
 [Unofficial]
+
 The Linux Foundation Project - CAMARA (Telco Global API Alliance)
-Unified OpenAPI
+
+# Unified OpenAPI
 
 This repository aggregates all CAMARA OpenAPI specs into a single file, trying by script and github actions to get remote individual OpenAPI specs for all the stable APIs: https://camaraproject.org/api-overview/
 
-The original files, sections APIs, and final merged Full OpenAPI yaml spec are  available in `dist/camara-openapi.yaml` and is automatically regenerated when any of the individual specs change.
+The original files, sections APIs, and final merged Full OpenAPI yaml spec are  available in [`dist/camara-openapi.yaml`](https://github.com/andreibesleaga/camara-openapi/blob/main/dist/camara-openapi.yaml) and is automatically regenerated when any of the individual specs change.
 
 CAMARA API Aggregator
 This project should automatically discover, fetch, merge, and validate all mature and stable OpenAPI specifications from the CAMARA Project into a single, unified OpenAPI file.
