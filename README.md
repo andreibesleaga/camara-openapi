@@ -6,7 +6,7 @@ Auto SDK generated libraries and MCP SDK, based on this CAMARA OpenAPI specs fro
 
 # CAMARA Unified OpenAPI
 
-This repository aggregates all CAMARA OpenAPI specs API repos files, into a single file, trying by script and github actions to get remote individual OpenAPI specs for all the stable APIs: https://camaraproject.org/api-overview/
+This repository aggregates all CAMARA OpenAPI specs API repos files, into a single file, trying by script and github actions to get remote individual OpenAPI specs for all the stable APIs, on a weekly basis: https://camaraproject.org/api-overview/
 
 The original files, sections APIs, and final merged Full OpenAPI yaml spec are  available in [`dist/camara-openapi.yaml`](https://github.com/andreibesleaga/camara-openapi/blob/main/dist/camara-openapi.yaml) and is automatically regenerated when any of the individual specs change.
 
