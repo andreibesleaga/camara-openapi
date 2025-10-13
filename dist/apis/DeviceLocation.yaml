@@ -113,16 +113,16 @@ info:
     # Further info and support
 
     (FAQs will be added in a later version of the documentation)
-  version: 0.5.0
+  version: wip
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-  x-camara-commonalities: 0.6
+  x-camara-commonalities: tbd
 externalDocs:
   description: Project documentation at Camara
   url: https://github.com/camaraproject/DeviceLocation
 servers:
-  - url: '{apiRoot}/geofencing-subscriptions/v0.5'
+  - url: '{apiRoot}/geofencing-subscriptions/vwip'
     variables:
       apiRoot:
         default: http://localhost:9091
