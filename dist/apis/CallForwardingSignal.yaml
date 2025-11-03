@@ -146,7 +146,7 @@ info:
     error response if it is explicitly documented in the API.
     # FAQ's
     (FAQs will be added in a later version of the documentation)
-  version: 0.4.0
+  version: wip
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
@@ -155,7 +155,7 @@ externalDocs:
   description: Product documentation at CAMARA
   url: https://github.com/camaraproject/CallForwardingSignal
 servers:
-  - url: '{apiRoot}/call-forwarding-signal/v0.4'
+  - url: '{apiRoot}/call-forwarding-signal/vwip'
     variables:
       apiRoot:
         default: http://localhost:9091
