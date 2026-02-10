@@ -41,4 +41,5 @@ jobs:
           # The following command will check if there are any changes to commit.
           # If there are, it will commit and push. If not, it will exit gracefully.
           git diff-index --quiet HEAD || git commit -m "docs(openapi): Regenerate complete CAMARA spec"
+          git pull
           git push
