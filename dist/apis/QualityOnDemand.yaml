@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: QoS Profiles
   description: |
-    The Quality-of-Service (QoS) Profiles API provides a set of predefined network performance characteristics, such as latency, throughput, and priority, identified by a unique name. These profiles allow application developers to specify the desired network behavior for their application's data traffic, ensuring optimal performance. By selecting an appropriate QoS profile, developers can request stable latency (reduced jitter) or throughput for specific data flows between client devices and application servers when used by the Quality-On-Demand APIs.
+    The Quality-of-Service (QoS) Profiles API provides a set of predefined network performance characteristics, such as latency, throughput, and priority, identified by a unique name. These profiles allow API consumers to specify the desired network behavior for their application's data traffic, ensuring optimal performance. By selecting an appropriate QoS profile, API consumers can request stable latency (reduced jitter) or throughput for specific data flows between client devices and application servers when used by the Quality-On-Demand APIs.
 
     # Introduction
 
@@ -387,7 +387,6 @@ components:
       example: voice
       minLength: 3
       maxLength: 256
-      format: string
       pattern: ^[a-zA-Z0-9_.-]+$
     Rate:
       description: Specification of rate
@@ -496,7 +495,7 @@ components:
       description: |
         End-user equipment able to connect to a mobile network. Examples of devices include smartphones or IoT sensors/actuators.
 
-        The developer can choose to provide the below specified device identifiers:
+        The API consumer can choose to provide the below specified device identifiers:
 
         * `ipv4Address`
         * `ipv6Address`
