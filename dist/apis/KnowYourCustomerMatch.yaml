@@ -20,10 +20,6 @@ info:
 
     * To prevent fraud, wrong or imprecise information, and/or facilitate the onboarding of a mobile phone user to a 3rd party service.
 
-    The following figure is the generic high-level flows of this API.
-
-    <img width="848" alt="KYC_Match_flow" src="https://raw.githubusercontent.com/camaraproject/KnowYourCustomerMatch/r1.2/documentation/API_documentation/assets/kyc-match_flow.png">
-
     Note:
 
     * Before calling this API, 3rd parties / enterprise customers who want to use this API should make contact with API provider/ MNO for use of this API.  As that will depend on each API provider / MNO's business process as well as GSMA Open Gateway standard process, it is out of scope of this API definition.
@@ -68,7 +64,7 @@ externalDocs:
   description: Product documentation at CAMARA
   url: https://github.com/camaraproject/KnowYourCustomerMatch
 servers:
-  - url: '{apiRoot}/kyc-match/v0.4'
+  - url: '{apiRoot}/kyc-match/vwip'
     variables:
       apiRoot:
         default: http://localhost:9091
