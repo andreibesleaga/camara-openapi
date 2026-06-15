@@ -831,6 +831,7 @@ components:
       example: qs15-h556-rt89-1298
 
     CloudEvent:
+      type: object
       description: The notification callback
       required:
         - id
@@ -927,6 +928,7 @@ components:
               $ref: "#/components/schemas/ReachabilityDataSmsDisconnected"
 
     ReachabilityDataSmsDisconnected:
+      type: object
       required:
         - subscriptionId
       properties:

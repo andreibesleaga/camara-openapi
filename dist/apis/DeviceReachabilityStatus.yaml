@@ -803,6 +803,7 @@ components:
       description: The unique identifier of the subscription in the scope of the subscription manager. When this information is contained within an event notification, this concept SHALL be referred as subscriptionId as per Commonalities Event Notification Model.
       example: qs15-h556-rt89-1298
     CloudEvent:
+      type: object
       description: The notification callback
       required:
         - id
@@ -893,6 +894,7 @@ components:
             data:
               $ref: '#/components/schemas/ReachabilityDataSmsDisconnected'
     ReachabilityDataSmsDisconnected:
+      type: object
       required:
         - subscriptionId
       properties:
