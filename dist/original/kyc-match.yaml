@@ -116,6 +116,7 @@ paths:
                   idDocument: 66666666q
                   idDocumentType: passport
                   idDocumentExpiryDate: '2027-07-12'
+                  bankAccountNumber: IBAN:NL59ABNA0123456789
                   name: Federica Sanchez Arjona
                   givenName: Federica
                   familyName: Sanchez Arjona
@@ -142,6 +143,7 @@ paths:
                   idDocument: 66666666q
                   idDocumentType: passport
                   idDocumentExpiryDate: '2027-07-12'
+                  bankAccountNumber: IBAN:NL59ABNA0123456789
                   name: Federica Sanchez Arjona
                   givenName: Federica
                   familyName: Sanchez Arjona
@@ -182,6 +184,7 @@ paths:
                     idDocumentMatch: 'true'
                     idDocumentTypeMatch: 'true'
                     idDocumentExpiryDateMatch: 'true'
+                    bankAccountNumberMatch: 'true'
                     nameMatch: 'true'
                     givenNameMatch: 'not_available'
                     familyNameMatch: 'not_available'
@@ -276,6 +279,12 @@ components:
           type: string
           format: date
           description: Expiration date of the identity document (ISO 8601).
+
+        bankAccountNumber:
+          type: string
+          maxLength: 50
+          pattern: '^[A-Z]+:[A-Za-z0-9]+$'
+          description: The bank account number maintained by the API Provider (Telco operator) to collect monthly subscription payments from the contract owner.  The string is formatted as `PREFIX:VALUE`. The uppercase prefix before the colon (':') indicates the type of account number (e.g., IBAN, SWIFT), and the alphanumeric string after the colon represents the actual bank account number.
 
         name:
           type: string
@@ -401,6 +410,12 @@ components:
           allOf:
             - $ref: '#/components/schemas/MatchResult'
             - description: Indicates whether document expiration date associated to the ID document of the customer matches with the one on the Operator's system.
+
+        bankAccountNumberMatch:
+          allOf:
+            - $ref: '#/components/schemas/MatchResult'
+            - description: Indicates whether the provided bankAccountNumber matches the records in the API Provider (Telco operator)'s system.
+
         nameMatch:
           allOf:
             - $ref: '#/components/schemas/MatchResult'
