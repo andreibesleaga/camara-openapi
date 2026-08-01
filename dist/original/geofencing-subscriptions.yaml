@@ -187,7 +187,7 @@ paths:
                 content:
                   application/cloudevents+json:
                     schema:
-                      $ref: "#/components/schemas/CloudEvent"
+                      $ref: "#/components/schemas/GeofencingNotificationEvent"
                     examples:
                       CIRCLE_AREA_ENTERED:
                         $ref: "#/components/examples/CIRCLE_AREA_ENTERED"
@@ -244,7 +244,7 @@ paths:
         "401":
           $ref: "#/components/responses/Generic401"
         "403":
-          $ref: "#/components/responses/Generic403"
+          $ref: "#/components/responses/SubscriptionPermissionDenied403"
         "422":
           $ref: "#/components/responses/CreateSubscriptionUnprocessableEntity422"
         "429":
@@ -279,7 +279,7 @@ paths:
         "401":
           $ref: "#/components/responses/Generic401"
         "403":
-          $ref: "#/components/responses/Generic403"
+          $ref: "#/components/responses/SubscriptionPermissionDenied403"
   /subscriptions/{subscriptionId}:
     get:
       tags:
@@ -308,7 +308,7 @@ paths:
         "401":
           $ref: "#/components/responses/Generic401"
         "403":
-          $ref: "#/components/responses/Generic403"
+          $ref: "#/components/responses/SubscriptionPermissionDenied403"
         "404":
           $ref: "#/components/responses/Generic404"
     delete:
@@ -343,7 +343,7 @@ paths:
         "401":
           $ref: "#/components/responses/Generic401"
         "403":
-          $ref: "#/components/responses/Generic403"
+          $ref: "#/components/responses/SubscriptionPermissionDenied403"
         "404":
           $ref: "#/components/responses/Generic404"
 components:
@@ -374,8 +374,6 @@ components:
       schema:
         $ref: '../common/CAMARA_common.yaml#/components/schemas/XCorrelator'
   schemas:
-    XCorrelator:
-      $ref: '../common/CAMARA_common.yaml#/components/schemas/XCorrelator'
     ErrorInfo:
       $ref: '../common/CAMARA_common.yaml#/components/schemas/ErrorInfo'
 
@@ -509,7 +507,7 @@ components:
         - org.camaraproject.geofencing-subscriptions.v0.area-entered
         - org.camaraproject.geofencing-subscriptions.v0.area-left
 
-    NotificationEventType:
+    GeofencingEventType:
       type: string
       description: |
         area-entered - Event triggered when the device enters the given area
@@ -618,12 +616,6 @@ components:
     NetworkAccessIdentifier:
       $ref: '../common/CAMARA_common.yaml#/components/schemas/NetworkAccessIdentifier'
 
-    DeviceIpv4Addr:
-      $ref: '../common/CAMARA_common.yaml#/components/schemas/DeviceIpv4Address'
-
-    SingleIpv4Addr:
-      $ref: '../common/CAMARA_common.yaml#/components/schemas/SingleIpv4Address'
-
     Port:
       $ref: '../common/CAMARA_common.yaml#/components/schemas/Port'
 
@@ -681,20 +673,14 @@ components:
     Point:
       $ref: '../common/CAMARA_common.yaml#/components/schemas/Point'
 
-    Latitude:
-      $ref: '../common/CAMARA_common.yaml#/components/schemas/Latitude'
-
-    Longitude:
-      $ref: '../common/CAMARA_common.yaml#/components/schemas/Longitude'
-
-    CloudEvent:
+    GeofencingNotificationEvent:
       description: The notification callback.
       allOf:
         - $ref: '../common/CAMARA_event_common.yaml#/components/schemas/CloudEvent'
         - type: object
           properties:
             type:
-              $ref: "#/components/schemas/NotificationEventType"
+              $ref: "#/components/schemas/GeofencingEventType"
       discriminator:
         propertyName: "type"
         mapping:
@@ -704,23 +690,11 @@ components:
           org.camaraproject.geofencing-subscriptions.v0.subscription-updated: "#/components/schemas/EventSubscriptionUpdated"
           org.camaraproject.geofencing-subscriptions.v0.subscription-ended: "#/components/schemas/EventSubscriptionEnded"
 
-    Source:
-      $ref: '../common/CAMARA_event_common.yaml#/components/schemas/Source'
-
-    DateTime:
-      $ref: '../common/CAMARA_common.yaml#/components/schemas/DateTime'
-
     SubscriptionId:
       $ref: '../common/CAMARA_event_common.yaml#/components/schemas/SubscriptionId'
 
     SinkCredential:
       $ref: '../common/CAMARA_event_common.yaml#/components/schemas/SinkCredential'
-
-    AccessTokenCredential:
-      $ref: '../common/CAMARA_event_common.yaml#/components/schemas/AccessTokenCredential'
-
-    PrivateKeyJWTCredential:
-      $ref: '../common/CAMARA_event_common.yaml#/components/schemas/PrivateKeyJWTCredential'
 
     HTTPSettings:
       $ref: '../common/CAMARA_event_common.yaml#/components/schemas/HTTPSettings'
@@ -734,7 +708,7 @@ components:
     EventAreaLeft:
       description: Event structure for event when the device leaves the area.
       allOf:
-        - $ref: "#/components/schemas/CloudEvent"
+        - $ref: "#/components/schemas/GeofencingNotificationEvent"
         - type: object
           properties:
             data:
@@ -743,7 +717,7 @@ components:
     EventAreaEntered:
       description: Event structure for event when the device enters the area.
       allOf:
-        - $ref: "#/components/schemas/CloudEvent"
+        - $ref: "#/components/schemas/GeofencingNotificationEvent"
         - type: object
           properties:
             data:
@@ -752,7 +726,7 @@ components:
     EventSubscriptionStarted:
       description: Event structure for event subscription started
       allOf:
-        - $ref: "#/components/schemas/CloudEvent"
+        - $ref: "#/components/schemas/GeofencingNotificationEvent"
         - type: object
           properties:
             data:
@@ -782,7 +756,7 @@ components:
     EventSubscriptionUpdated:
       description: Event structure for event subscription updated
       allOf:
-        - $ref: "#/components/schemas/CloudEvent"
+        - $ref: "#/components/schemas/GeofencingNotificationEvent"
         - type: object
           properties:
             data:
@@ -812,7 +786,7 @@ components:
     EventSubscriptionEnded:
       description: Event structure for event subscription ends.
       allOf:
-        - $ref: "#/components/schemas/CloudEvent"
+        - $ref: "#/components/schemas/GeofencingNotificationEvent"
         - type: object
           properties:
             data:
@@ -995,35 +969,7 @@ components:
     Generic401:
       $ref: '../common/CAMARA_common.yaml#/components/responses/Generic401'
     SubscriptionPermissionDenied403:
-      description: Client does not have sufficient permission.
-      headers:
-        x-correlator:
-          $ref: "#/components/headers/x-correlator"
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: "#/components/schemas/ErrorInfo"
-              - type: object
-                properties:
-                  status:
-                    enum:
-                      - 403
-                  code:
-                    enum:
-                      - PERMISSION_DENIED
-                      - SUBSCRIPTION_MISMATCH
-          examples:
-            GENERIC_403_PERMISSION_DENIED:
-              value:
-                status: 403
-                code: PERMISSION_DENIED
-                message: Client does not have sufficient permissions to perform this action.
-            GENERIC_403_TOKEN_MISMATCH:
-              value:
-                status: 403
-                code: SUBSCRIPTION_MISMATCH
-                message: Inconsistent access token for requested events subscription.
+      $ref: '../common/CAMARA_event_common.yaml#/components/responses/SubscriptionPermissionDenied403'
     Generic403:
       description: Client does not have sufficient permission
       headers:

@@ -184,7 +184,7 @@ paths:
                 content:
                   application/cloudevents+json:
                     schema:
-                      $ref: '#/components/schemas/CloudEvent'
+                      $ref: '#/components/schemas/GeofencingNotificationEvent'
                     examples:
                       CIRCLE_AREA_ENTERED:
                         $ref: '#/components/examples/CIRCLE_AREA_ENTERED'
@@ -241,7 +241,7 @@ paths:
         '401':
           $ref: '#/components/responses/Generic401'
         '403':
-          $ref: '#/components/responses/Generic403'
+          $ref: '#/components/responses/SubscriptionPermissionDenied403'
         '422':
           $ref: '#/components/responses/CreateSubscriptionUnprocessableEntity422'
         '429':
@@ -276,7 +276,7 @@ paths:
         '401':
           $ref: '#/components/responses/Generic401'
         '403':
-          $ref: '#/components/responses/Generic403'
+          $ref: '#/components/responses/SubscriptionPermissionDenied403'
   /subscriptions/{subscriptionId}:
     get:
       tags:
@@ -305,7 +305,7 @@ paths:
         '401':
           $ref: '#/components/responses/Generic401'
         '403':
-          $ref: '#/components/responses/Generic403'
+          $ref: '#/components/responses/SubscriptionPermissionDenied403'
         '404':
           $ref: '#/components/responses/Generic404'
     delete:
@@ -340,7 +340,7 @@ paths:
         '401':
           $ref: '#/components/responses/Generic401'
         '403':
-          $ref: '#/components/responses/Generic403'
+          $ref: '#/components/responses/SubscriptionPermissionDenied403'
         '404':
           $ref: '#/components/responses/Generic404'
 components:
@@ -369,19 +369,17 @@ components:
       in: header
       description: Correlation id for the different services.
       schema:
-        $ref: '#/components/schemas/XCorrelator'
+        $ref: '#/components/headers/x-correlator/schema'
   headers:
     x-correlator:
       description: Correlation id for the different services.
       schema:
-        $ref: '#/components/schemas/XCorrelator'
+        type: string
+        description: Correlator string, UUID format recommended but any string matching the pattern can be used
+        pattern: ^[a-zA-Z0-9-_:;.\/<>{}]{0,256}$
+        maxLength: 256
+        example: b4333c46-49c0-4f62-80d7-f0ef930f1c46
   schemas:
-    XCorrelator:
-      type: string
-      description: Correlator string, UUID format recommended but any string matching the pattern can be used
-      pattern: ^[a-zA-Z0-9-_:;.\/<>{}]{0,256}$
-      maxLength: 256
-      example: b4333c46-49c0-4f62-80d7-f0ef930f1c46
     ErrorInfo:
       type: object
       description: A structured error response providing details about a failed request, including the HTTP status code, an error code, and a human-readable message
@@ -529,7 +527,7 @@ components:
       enum:
         - org.camaraproject.geofencing-subscriptions.v0.area-entered
         - org.camaraproject.geofencing-subscriptions.v0.area-left
-    NotificationEventType:
+    GeofencingEventType:
       type: string
       description: |
         area-entered - Event triggered when the device enters the given area
@@ -643,7 +641,36 @@ components:
         networkAccessIdentifier:
           $ref: '#/components/schemas/NetworkAccessIdentifier'
         ipv4Address:
-          $ref: '#/components/schemas/DeviceIpv4Addr'
+          type: object
+          description: |
+            The device should be identified by either the public (observed) IP address and port as seen by the application server, or the private (local) and any public (observed) IP addresses in use by the device (this information can be obtained by various means, for example from some DNS servers).
+
+            If the allocated and observed IP addresses are the same (i.e. NAT is not in use) then  the same address should be specified for both publicAddress and privateAddress.
+
+            If NAT64 is in use, the device should be identified by its publicAddress and publicPort, or separately by its allocated IPv6 address (field ipv6Address of the Device object)
+
+            In all cases, publicAddress must be specified, along with at least one of either privateAddress or publicPort, dependent upon which is known. In general, mobile devices cannot be identified by their public IPv4 address alone.
+          properties:
+            publicAddress:
+              description: A single IPv4 address with no subnet mask
+              type: string
+              format: ipv4
+              maxLength: 15
+              example: 84.125.93.10
+            privateAddress:
+              $ref: '#/components/schemas/Device/properties/ipv4Address/properties/publicAddress'
+            publicPort:
+              $ref: '#/components/schemas/Port'
+          anyOf:
+            - required:
+                - publicAddress
+                - privateAddress
+            - required:
+                - publicAddress
+                - publicPort
+          example:
+            publicAddress: 84.125.93.10
+            publicPort: 59765
         ipv6Address:
           $ref: '#/components/schemas/DeviceIpv6Address'
       minProperties: 1
@@ -658,39 +685,6 @@ components:
       type: string
       maxLength: 2048
       example: 123456789@example.com
-    DeviceIpv4Addr:
-      type: object
-      description: |
-        The device should be identified by either the public (observed) IP address and port as seen by the application server, or the private (local) and any public (observed) IP addresses in use by the device (this information can be obtained by various means, for example from some DNS servers).
-
-        If the allocated and observed IP addresses are the same (i.e. NAT is not in use) then  the same address should be specified for both publicAddress and privateAddress.
-
-        If NAT64 is in use, the device should be identified by its publicAddress and publicPort, or separately by its allocated IPv6 address (field ipv6Address of the Device object)
-
-        In all cases, publicAddress must be specified, along with at least one of either privateAddress or publicPort, dependent upon which is known. In general, mobile devices cannot be identified by their public IPv4 address alone.
-      properties:
-        publicAddress:
-          $ref: '#/components/schemas/SingleIpv4Addr'
-        privateAddress:
-          $ref: '#/components/schemas/SingleIpv4Addr'
-        publicPort:
-          $ref: '#/components/schemas/Port'
-      anyOf:
-        - required:
-            - publicAddress
-            - privateAddress
-        - required:
-            - publicAddress
-            - publicPort
-      example:
-        publicAddress: 84.125.93.10
-        publicPort: 59765
-    SingleIpv4Addr:
-      description: A single IPv4 address with no subnet mask
-      type: string
-      format: ipv4
-      maxLength: 15
-      example: 84.125.93.10
     Port:
       description: TCP or UDP port number
       type: integer
@@ -762,25 +756,21 @@ components:
         - longitude
       properties:
         latitude:
-          $ref: '#/components/schemas/Latitude'
+          description: Latitude component of a location
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
         longitude:
-          $ref: '#/components/schemas/Longitude'
+          description: Longitude component of location
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
       example:
         latitude: 50.735851
         longitude: 7.10066
-    Latitude:
-      description: Latitude component of a location
-      type: number
-      format: double
-      minimum: -90
-      maximum: 90
-    Longitude:
-      description: Longitude component of location
-      type: number
-      format: double
-      minimum: -180
-      maximum: 180
-    CloudEvent:
+    GeofencingNotificationEvent:
       description: The notification callback.
       allOf:
         - type: object
@@ -801,7 +791,21 @@ components:
               maxLength: 256
               description: Identifier of this event, unique within the source context.
             source:
-              $ref: '#/components/schemas/Source'
+              type: string
+              format: uri-reference
+              minLength: 1
+              maxLength: 2048
+              description: |
+                Identifies the context in which an event happened - be a non-empty `URI-reference` like:
+                - URI with a DNS authority:
+                  * https://github.com/cloudevents
+                  * mailto:cncf-wg-serverless@lists.cncf.io
+                - Universally-unique URN with a UUID:
+                  * urn:uuid:6e8bc430-9c3a-11d9-9669-0800200c9a66
+                - Application-specific identifier:
+                  * /cloudevents/spec/pull/123
+                  * 1-555-123-4567
+              example: https://notificationSendServer12.example.com
             type:
               type: string
               maxLength: 512
@@ -823,11 +827,15 @@ components:
               type: object
               description: Event details payload. Structure is defined by each concrete event schema.
             time:
-              $ref: '#/components/schemas/DateTime'
+              type: string
+              format: date-time
+              maxLength: 64
+              description: Timestamp. It must follow [RFC 3339](https://datatracker.ietf.org/doc/html/rfc3339#section-5.6) and must have time zone.
+              example: '2018-04-05T17:31:00Z'
         - type: object
           properties:
             type:
-              $ref: '#/components/schemas/NotificationEventType'
+              $ref: '#/components/schemas/GeofencingEventType'
       discriminator:
         propertyName: type
         mapping:
@@ -836,28 +844,6 @@ components:
           org.camaraproject.geofencing-subscriptions.v0.subscription-started: '#/components/schemas/EventSubscriptionStarted'
           org.camaraproject.geofencing-subscriptions.v0.subscription-updated: '#/components/schemas/EventSubscriptionUpdated'
           org.camaraproject.geofencing-subscriptions.v0.subscription-ended: '#/components/schemas/EventSubscriptionEnded'
-    Source:
-      type: string
-      format: uri-reference
-      minLength: 1
-      maxLength: 2048
-      description: |
-        Identifies the context in which an event happened - be a non-empty `URI-reference` like:
-        - URI with a DNS authority:
-          * https://github.com/cloudevents
-          * mailto:cncf-wg-serverless@lists.cncf.io
-        - Universally-unique URN with a UUID:
-          * urn:uuid:6e8bc430-9c3a-11d9-9669-0800200c9a66
-        - Application-specific identifier:
-          * /cloudevents/spec/pull/123
-          * 1-555-123-4567
-      example: https://notificationSendServer12.example.com
-    DateTime:
-      type: string
-      format: date-time
-      maxLength: 64
-      description: Timestamp. It must follow [RFC 3339](https://datatracker.ietf.org/doc/html/rfc3339#section-5.6) and must have time zone.
-      example: '2018-04-05T17:31:00Z'
     SubscriptionId:
       type: string
       maxLength: 256
@@ -881,64 +867,6 @@ components:
           PRIVATE_KEY_JWT: '#/components/schemas/PrivateKeyJWTCredential'
       required:
         - credentialType
-    AccessTokenCredential:
-      type: object
-      description: An access token credential. This type of credential is meant to be used by API Consumers that have limited capabilities to handle authorization requests.
-      allOf:
-        - $ref: '#/components/schemas/SinkCredential'
-        - type: object
-          properties:
-            accessToken:
-              description: REQUIRED. An access token is a token granting access to the target resource.
-              type: string
-              maxLength: 4096
-              writeOnly: true
-            accessTokenExpiresUtc:
-              type: string
-              format: date-time
-              maxLength: 64
-              description: |
-                REQUIRED. An absolute (UTC) timestamp at which the token shall be considered expired.
-                In the case of an ACCESS_TOKEN_EXPIRED termination reason, implementation should notify the client before the expiration date.
-                If the access token is a JWT and registered "exp" (Expiration Time) claim is present, the two expiry times should match.
-                It must follow [RFC 3339](https://datatracker.ietf.org/doc/html/rfc3339#section-5.6) and must have time zone.
-              example: '2023-07-03T12:27:08.312Z'
-            accessTokenType:
-              description: REQUIRED. Type of the access token (See [OAuth 2.0](https://tools.ietf.org/html/rfc6749#section-7.1)).
-              type: string
-              writeOnly: true
-              enum:
-                - bearer
-          required:
-            - accessToken
-            - accessTokenExpiresUtc
-            - accessTokenType
-    PrivateKeyJWTCredential:
-      type: object
-      description: Use PRIVATE_KEY_JWT to get an access token. This type of credential is to be used by clients that have an authorization server.
-      allOf:
-        - $ref: '#/components/schemas/SinkCredential'
-        - type: object
-          properties:
-            clientId:
-              description: The client ID used to authenticate when requesting an access token using PRIVATE_KEY_JWT.
-              type: string
-              maxLength: 128
-              writeOnly: true
-            tokenUri:
-              description: The URI where to request an access token using PRIVATE_KEY_JWT.
-              type: string
-              format: uri
-              maxLength: 2048
-              pattern: ^https:\/\/.+$
-              writeOnly: true
-            jwksUri:
-              description: The URI used to request the public key to verify that the JWT assertion was signed by PRIVATE_KEY_JWT.
-              type: string
-              format: uri
-              maxLength: 2048
-              pattern: ^https:\/\/.+$
-              readOnly: true
     HTTPSettings:
       type: object
       description: HTTP protocol settings for event delivery.
@@ -974,7 +902,7 @@ components:
     EventAreaLeft:
       description: Event structure for event when the device leaves the area.
       allOf:
-        - $ref: '#/components/schemas/CloudEvent'
+        - $ref: '#/components/schemas/GeofencingNotificationEvent'
         - type: object
           properties:
             data:
@@ -982,7 +910,7 @@ components:
     EventAreaEntered:
       description: Event structure for event when the device enters the area.
       allOf:
-        - $ref: '#/components/schemas/CloudEvent'
+        - $ref: '#/components/schemas/GeofencingNotificationEvent'
         - type: object
           properties:
             data:
@@ -990,7 +918,7 @@ components:
     EventSubscriptionStarted:
       description: Event structure for event subscription started
       allOf:
-        - $ref: '#/components/schemas/CloudEvent'
+        - $ref: '#/components/schemas/GeofencingNotificationEvent'
         - type: object
           properties:
             data:
@@ -1018,7 +946,7 @@ components:
     EventSubscriptionUpdated:
       description: Event structure for event subscription updated
       allOf:
-        - $ref: '#/components/schemas/CloudEvent'
+        - $ref: '#/components/schemas/GeofencingNotificationEvent'
         - type: object
           properties:
             data:
@@ -1046,7 +974,7 @@ components:
     EventSubscriptionEnded:
       description: Event structure for event subscription ends.
       allOf:
-        - $ref: '#/components/schemas/CloudEvent'
+        - $ref: '#/components/schemas/GeofencingNotificationEvent'
         - type: object
           properties:
             data:
@@ -1192,7 +1120,7 @@ components:
         x-correlator:
           description: Correlation id for the different services
           schema:
-            $ref: '#/components/schemas/XCorrelator'
+            $ref: '#/components/headers/x-correlator/schema'
       content:
         application/json:
           schema:
@@ -1277,10 +1205,10 @@ components:
                 code: UNAUTHENTICATED
                 message: Request not authenticated due to missing, invalid, or expired credentials. A new authentication is required.
     SubscriptionPermissionDenied403:
-      description: Client does not have sufficient permission.
+      description: Client does not have sufficient permission
       headers:
         x-correlator:
-          $ref: '#/components/headers/x-correlator'
+          $ref: '#/components/responses/Generic400/headers/x-correlator'
       content:
         application/json:
           schema:
@@ -1297,15 +1225,17 @@ components:
                       - SUBSCRIPTION_MISMATCH
           examples:
             GENERIC_403_PERMISSION_DENIED:
+              description: Permission denied. OAuth2 token access does not have the required scope or when the user fails operational security
               value:
                 status: 403
                 code: PERMISSION_DENIED
                 message: Client does not have sufficient permissions to perform this action.
-            GENERIC_403_TOKEN_MISMATCH:
+            GENERIC_403_SUBSCRIPTION_MISMATCH:
+              description: Inconsistent access token for requested subscription
               value:
                 status: 403
                 code: SUBSCRIPTION_MISMATCH
-                message: Inconsistent access token for requested events subscription.
+                message: Inconsistent access token for requested events subscription
     Generic403:
       description: Client does not have sufficient permission
       headers:
