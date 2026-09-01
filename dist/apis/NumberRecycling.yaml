@@ -140,7 +140,7 @@ paths:
           description: OK
           headers:
             x-correlator:
-              $ref: '#/components/responses/Generic200/headers/x-correlator'
+              $ref: '#/components/responses/Generic400/headers/x-correlator'
           content:
             application/json:
               schema:
@@ -191,22 +191,13 @@ components:
           description: |
             Set to true (Boolean, not string) when there has been a change in the subscriber associated with the specific phone number after “specifiedDate”.
   responses:
-    Generic200:
-      description: OK
+    Generic400:
+      description: Problem with the client request
       headers:
         x-correlator:
           description: Correlation id for the different services
           schema:
             $ref: '#/paths/~1check/post/parameters/0/schema'
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/CheckNumRecyclingInfo'
-    Generic400:
-      description: Problem with the client request
-      headers:
-        x-correlator:
-          $ref: '#/components/responses/Generic200/headers/x-correlator'
       content:
         application/json:
           schema:
@@ -258,7 +249,7 @@ components:
       description: Authentication problem with the client request
       headers:
         x-correlator:
-          $ref: '#/components/responses/Generic200/headers/x-correlator'
+          $ref: '#/components/responses/Generic400/headers/x-correlator'
       content:
         application/json:
           schema:
@@ -283,7 +274,7 @@ components:
       description: Client does not have sufficient permission
       headers:
         x-correlator:
-          $ref: '#/components/responses/Generic200/headers/x-correlator'
+          $ref: '#/components/responses/Generic400/headers/x-correlator'
       content:
         application/json:
           schema:
@@ -308,7 +299,7 @@ components:
       description: Resource Not Found
       headers:
         x-correlator:
-          $ref: '#/components/responses/Generic200/headers/x-correlator'
+          $ref: '#/components/responses/Generic400/headers/x-correlator'
       content:
         application/json:
           schema:
@@ -333,7 +324,7 @@ components:
       description: Unprocessable Content
       headers:
         x-correlator:
-          $ref: '#/components/responses/Generic200/headers/x-correlator'
+          $ref: '#/components/responses/Generic400/headers/x-correlator'
       content:
         application/json:
           schema:

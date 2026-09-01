@@ -30,9 +30,9 @@ info:
 
     # Identifying the device from the access token
 
-    The two operations defined by this API (`getQosProfile` and `retrieveQoSProfiles`) both allow the API consumer to use a three-legged access token to specify a target device as a query filter. When provided, only profiles available to the specified target device will be returned. Additionally, when a two-legged access token is used, the operation `retrieveQoSProfiles` allows the API consumer to optionally specify the target device in the request body.
+    The two operations defined by this API (`getQosProfile` and `retrieveQosProfiles`) both allow the API consumer to use a three-legged access token to specify a target device as a query filter. When provided, only profiles available to the specified target device will be returned. Additionally, when a two-legged access token is used, the operation `retrieveQosProfiles` allows the API consumer to optionally specify the target device in the request body.
 
-    Hence, for the `retrieveQoSProfiles` operation:
+    Hence, for the `retrieveQosProfiles` operation:
     - When invoked using a two-legged access token, the optional input device object will be used as filter if present.
 
     - When invoked using a three-legged access token, this optional identifier in the request body MUST NOT be provided, as the device to filter will be uniquely identified from the access token.
@@ -96,11 +96,11 @@ paths:
         - If the access token is 3-legged, all returned QoS Profiles will be available to the subject (device) associated with the access token.
         - If the access token is 2-legged and a device filter is provided, all returned QoS Profiles will be available to that device. If multiple device identifiers are provided within the device property, only QoS Profiles available to the device identifier chosen by the implementation will be returned, even if the identifiers do not match the same device. API provider does not perform any logic to validate/correlate that the indicated device identifiers match the same device. No error should be returned if the identifiers are otherwise valid to prevent API consumers correlating different identifiers with a given end user.
         - This call uses the POST method instead of GET to comply with the CAMARA Commonalities guidelines for sending sensitive or complex data in API calls. Since the device field may contain personally identifiable information, it should not be sent via GET. Additionally, this call may include complex data structures.
-          [CAMARA API Design Guidelines](https://github.com/camaraproject/Commonalities/blob/r3.3/documentation/API-design-guidelines.md#post-or-get-for-transferring-sensitive-or-complex-data)
+          [CAMARA API Design Guidelines](https://github.com/camaraproject/Commonalities/blob/r4.3/documentation/CAMARA-API-Design-Guide.md#65-post-or-get-for-transferring-sensitive-or-complex-data)
       security:
         - openId:
             - qos-profiles:read
-      operationId: retrieveQoSProfiles
+      operationId: retrieveQosProfiles
       parameters:
         - name: x-correlator
           in: header
@@ -141,7 +141,7 @@ paths:
         '403':
           $ref: '#/components/responses/Generic403'
         '404':
-          $ref: '#/components/responses/GenericDevice404'
+          $ref: '#/components/responses/RetrieveQosProfilesNotFound404'
         '422':
           $ref: '#/components/responses/Generic422'
         '429':
@@ -184,7 +184,7 @@ paths:
         '403':
           $ref: '#/components/responses/Generic403'
         '404':
-          $ref: '#/components/responses/Generic404'
+          $ref: '#/components/responses/NotFound404'
         '429':
           $ref: '#/components/responses/Generic429'
 components:
@@ -346,7 +346,7 @@ components:
 
             **NOTE**: serviceClass is experimental and could change or be removed in a future release.
 
-            The name of a Service Class, representing a QoS Profile designed to provide optimized behavior for a specific application type. While DSCP values are commonly associated with Service Classes, their use may vary across network segments and may not be applied throughout the entire end-to-end QoS session. This aligns with the serviceClass concept used in HomeDevicesQoQ for consistent terminology.
+            The name of a Service Class, representing a QoS Profile designed to provide optimized behavior for a specific application type. While DSCP values are commonly associated with Service Classes, their use may vary across network segments and may not be applied throughout the entire end-to-end QoS session.
 
             Service classes define specific QoS behaviors that map to DSCP (Differentiated Services Code Point) values or Microsoft QoS traffic types.
 
@@ -356,7 +356,7 @@ components:
 
             **Supported Service Classes**:
 
-            | Service Class Name    | DSCP Name | DSCP value (decimal) | DCSP value (binary) | Microsoft Value | Application Examples                                                 |
+            | Service Class Name    | DSCP Name | DSCP value (decimal) | DSCP value (binary) | Microsoft Value | Application Examples                                                 |
             |-----------------------|-----------|----------------------|---------------------|-----------------|----------------------------------------------------------------------|
             | Microsoft Voice       |    CS7    |          56          |        111000       |       4,5       | Microsoft QOSTrafficTypeVoice and QOSTrafficTypeControl              |
             | Microsoft Audio/Video |    CS5    |          40          |        101000       |       2,3       | Microsoft QOSTrafficTypeExcellentEffort and QOSTrafficTypeAudioVideo |
@@ -475,7 +475,7 @@ components:
           - countryName
         properties:
           countryName:
-            description: The two letter ISO 3166-2 country code for the country in which the QoS profile is available in at least one network
+            description: The two letter ISO 3166-1 alpha-2 country code for the country in which the QoS profile is available in at least one network
             type: string
             pattern: ^[A-Z]{2}$
             maxLength: 2
@@ -679,7 +679,7 @@ components:
                 status: 403
                 code: PERMISSION_DENIED
                 message: Client does not have sufficient permissions to perform this action.
-    Generic404:
+    NotFound404:
       description: Not found
       headers:
         x-correlator:
@@ -704,7 +704,7 @@ components:
                 status: 404
                 code: NOT_FOUND
                 message: The specified resource is not found.
-    GenericDevice404:
+    RetrieveQosProfilesNotFound404:
       description: Not found
       headers:
         x-correlator:

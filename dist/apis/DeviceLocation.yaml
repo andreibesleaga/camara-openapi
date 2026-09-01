@@ -131,7 +131,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
   x-camara-commonalities: 0.8.0
 externalDocs:
-  description: Project documentation at Camara
+  description: Product documentation at CAMARA
   url: https://github.com/camaraproject/DeviceLocation
 servers:
   - url: '{apiRoot}/geofencing-subscriptions/vwip'
@@ -151,7 +151,7 @@ paths:
       description: Create a subscription for a device to receive notifications when the device enters or exits a specified area.
       operationId: createGeofencingSubscription
       parameters:
-        - $ref: '#/components/parameters/x-correlator'
+        - $ref: '#/paths/~1subscriptions/get/parameters/0'
       security:
         - openId:
             - geofencing-subscriptions:org.camaraproject.geofencing-subscriptions.v0.area-entered:create
@@ -178,7 +178,7 @@ paths:
                 The `operationId` value will have to be replaced accordingly with WG API specific semantics.
               operationId: postNotification
               parameters:
-                - $ref: '#/components/parameters/x-correlator'
+                - $ref: '#/paths/~1subscriptions/get/parameters/0'
               requestBody:
                 required: true
                 content:
@@ -203,7 +203,7 @@ paths:
                   description: Successful notification.
                   headers:
                     x-correlator:
-                      $ref: '#/components/headers/x-correlator'
+                      $ref: '#/components/responses/Generic403/headers/x-correlator'
                 '400':
                   $ref: '#/components/responses/Generic400'
                 '401':
@@ -222,7 +222,7 @@ paths:
           description: Created (Successful creation of subscription).
           headers:
             x-correlator:
-              $ref: '#/components/headers/x-correlator'
+              $ref: '#/components/responses/Generic403/headers/x-correlator'
           content:
             application/json:
               schema:
@@ -231,7 +231,7 @@ paths:
           description: Request accepted to be processed. It applies for async creation process.
           headers:
             x-correlator:
-              $ref: '#/components/headers/x-correlator'
+              $ref: '#/components/responses/Generic403/headers/x-correlator'
           content:
             application/json:
               schema:
@@ -253,7 +253,15 @@ paths:
       description: Retrieve a list of geofencing event subscription(s).
       operationId: retrieveGeofencingSubscriptionList
       parameters:
-        - $ref: '#/components/parameters/x-correlator'
+        - name: x-correlator
+          in: header
+          description: Correlation id for the different services
+          schema:
+            type: string
+            description: Correlator string, UUID format recommended but any string matching the pattern can be used
+            pattern: ^[a-zA-Z0-9-_:;.\/<>{}]{0,256}$
+            maxLength: 256
+            example: b4333c46-49c0-4f62-80d7-f0ef930f1c46
       security:
         - openId:
             - geofencing-subscriptions:read
@@ -262,7 +270,7 @@ paths:
           description: List of event subscription details.
           headers:
             x-correlator:
-              $ref: '#/components/headers/x-correlator'
+              $ref: '#/components/responses/Generic403/headers/x-correlator'
           content:
             application/json:
               schema:
@@ -289,13 +297,13 @@ paths:
             - geofencing-subscriptions:read
       parameters:
         - $ref: '#/components/parameters/SubscriptionId'
-        - $ref: '#/components/parameters/x-correlator'
+        - $ref: '#/paths/~1subscriptions/get/parameters/0'
       responses:
         '200':
           description: OK
           headers:
             x-correlator:
-              $ref: '#/components/headers/x-correlator'
+              $ref: '#/components/responses/Generic403/headers/x-correlator'
           content:
             application/json:
               schema:
@@ -319,13 +327,13 @@ paths:
             - geofencing-subscriptions:delete
       parameters:
         - $ref: '#/components/parameters/SubscriptionId'
-        - $ref: '#/components/parameters/x-correlator'
+        - $ref: '#/paths/~1subscriptions/get/parameters/0'
       responses:
         '202':
           description: Request accepted to be processed. It applies for async deletion process.
           headers:
             x-correlator:
-              $ref: '#/components/headers/x-correlator'
+              $ref: '#/components/responses/Generic403/headers/x-correlator'
           content:
             application/json:
               schema:
@@ -334,7 +342,7 @@ paths:
           description: Geofencing subscription deleted.
           headers:
             x-correlator:
-              $ref: '#/components/headers/x-correlator'
+              $ref: '#/components/responses/Generic403/headers/x-correlator'
         '400':
           $ref: '#/components/responses/SubscriptionIdRequired'
         '401':
@@ -364,21 +372,6 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/SubscriptionId'
-    x-correlator:
-      name: x-correlator
-      in: header
-      description: Correlation id for the different services.
-      schema:
-        $ref: '#/components/headers/x-correlator/schema'
-  headers:
-    x-correlator:
-      description: Correlation id for the different services.
-      schema:
-        type: string
-        description: Correlator string, UUID format recommended but any string matching the pattern can be used
-        pattern: ^[a-zA-Z0-9-_:;.\/<>{}]{0,256}$
-        maxLength: 256
-        example: b4333c46-49c0-4f62-80d7-f0ef930f1c46
   schemas:
     ErrorInfo:
       type: object
@@ -1074,7 +1067,7 @@ components:
       description: Problem with the client request.
       headers:
         x-correlator:
-          $ref: '#/components/headers/x-correlator'
+          $ref: '#/components/responses/Generic403/headers/x-correlator'
       content:
         application/json:
           schema:
@@ -1118,9 +1111,7 @@ components:
       description: Bad Request
       headers:
         x-correlator:
-          description: Correlation id for the different services
-          schema:
-            $ref: '#/components/headers/x-correlator/schema'
+          $ref: '#/components/responses/Generic403/headers/x-correlator'
       content:
         application/json:
           schema:
@@ -1152,7 +1143,7 @@ components:
       description: Problem with the client request
       headers:
         x-correlator:
-          $ref: '#/components/headers/x-correlator'
+          $ref: '#/components/responses/Generic403/headers/x-correlator'
       content:
         application/json:
           schema:
@@ -1183,7 +1174,7 @@ components:
       description: Unauthorized
       headers:
         x-correlator:
-          $ref: '#/components/responses/Generic400/headers/x-correlator'
+          $ref: '#/components/responses/Generic403/headers/x-correlator'
       content:
         application/json:
           schema:
@@ -1208,7 +1199,7 @@ components:
       description: Client does not have sufficient permission
       headers:
         x-correlator:
-          $ref: '#/components/responses/Generic400/headers/x-correlator'
+          $ref: '#/components/responses/Generic403/headers/x-correlator'
       content:
         application/json:
           schema:
@@ -1240,7 +1231,9 @@ components:
       description: Client does not have sufficient permission
       headers:
         x-correlator:
-          $ref: '#/components/headers/x-correlator'
+          description: Correlation id for the different services
+          schema:
+            $ref: '#/paths/~1subscriptions/get/parameters/0/schema'
       content:
         application/json:
           schema:
@@ -1265,7 +1258,7 @@ components:
       description: Not found
       headers:
         x-correlator:
-          $ref: '#/components/headers/x-correlator'
+          $ref: '#/components/responses/Generic403/headers/x-correlator'
       content:
         application/json:
           schema:
@@ -1290,7 +1283,7 @@ components:
       description: Gone
       headers:
         x-correlator:
-          $ref: '#/components/headers/x-correlator'
+          $ref: '#/components/responses/Generic403/headers/x-correlator'
       content:
         application/json:
           schema:
@@ -1315,7 +1308,7 @@ components:
       description: Unprocessable Entity
       headers:
         x-correlator:
-          $ref: '#/components/headers/x-correlator'
+          $ref: '#/components/responses/Generic403/headers/x-correlator'
       content:
         application/json:
           schema:
@@ -1390,7 +1383,7 @@ components:
       description: Too Many Requests
       headers:
         x-correlator:
-          $ref: '#/components/headers/x-correlator'
+          $ref: '#/components/responses/Generic403/headers/x-correlator'
       content:
         application/json:
           schema:
