@@ -342,6 +342,12 @@ paths:
                     status: 400
                     code: INVALID_CREDENTIAL
                     message: Only Access token or Private key JWT are supported
+                GENERIC_400_INVALID_TOKEN:
+                  description: Invalid access token in the sink credential
+                  value:
+                    status: 400
+                    code: INVALID_TOKEN
+                    message: Access token in sink credential is invalid or expired
                 GENERIC_400_INVALID_SINK:
                   description: Invalid sink value
                   value:
@@ -401,7 +407,6 @@ paths:
                         enum:
                           - ABORTED
                           - ALREADY_EXISTS
-                          - CONFLICT
                           - INCOMPATIBLE_STATE
               examples:
                 GENERIC_409_ABORTED:
@@ -416,12 +421,6 @@ paths:
                     status: 409
                     code: ALREADY_EXISTS
                     message: The resource that a client tried to create already exists.
-                GENERIC_409_CONFLICT:
-                  description: Duplication of an existing resource
-                  value:
-                    status: 409
-                    code: CONFLICT
-                    message: A specified resource duplicate entry found.
                 GENERIC_409_INCOMPATIBLE_STATE:
                   description: |
                     The status of the referenced resource is not compatible.
@@ -560,7 +559,7 @@ paths:
         - name: perPage
           in: query
           description: |
-            Number of subscriptions to return per page. Values outside the allowed range are rejected with `400 INVALID_ARGUMENT`.
+            Number of resources to return per page. Values outside the allowed range are rejected with `400 INVALID_ARGUMENT`.
           required: false
           schema:
             type: integer
@@ -711,7 +710,6 @@ paths:
                       code:
                         enum:
                           - PERMISSION_DENIED
-                          - INVALID_TOKEN_CONTEXT
               examples:
                 GENERIC_403_PERMISSION_DENIED:
                   description: Permission denied. OAuth2 token access does not have the required scope or when the user fails operational security
@@ -719,12 +717,6 @@ paths:
                     status: 403
                     code: PERMISSION_DENIED
                     message: Client does not have sufficient permissions to perform this action.
-                GENERIC_403_INVALID_TOKEN_CONTEXT:
-                  description: Reflect some inconsistency between information in some field of the API and the related OAuth2 Token
-                  value:
-                    status: 403
-                    code: INVALID_TOKEN_CONTEXT
-                    message: Request body is not consistent with access token.
   /subscriptions/{subscriptionId}:
     get:
       tags:
@@ -777,11 +769,7 @@ paths:
                           - INVALID_ARGUMENT
               examples:
                 GENERIC_400_INVALID_ARGUMENT:
-                  description: Invalid Argument. Generic Syntax Exception
-                  value:
-                    status: 400
-                    code: INVALID_ARGUMENT
-                    message: Client specified an invalid argument, request body or query param.
+                  $ref: '#/paths/~1subscriptions/post/responses/400/content/application~1json/examples/GENERIC_400_INVALID_ARGUMENT'
                 GENERIC_400_SUBSCRIPTION_ID_REQUIRED:
                   description: subscription id is required
                   value:
@@ -884,7 +872,7 @@ components:
         description: The unique identifier of the subscription in the scope of the subscription manager. When this information is contained within an event notification, it SHALL be referred to as `subscriptionId` as per the Commonalities Event Notification Model.
         example: qs15-h556-rt89-1298
   schemas:
-    CreateSubscriptionDetailLocal:
+    CreateSubscriptionDetail:
       description: The detail of the requested event subscription.
       type: object
       properties:
@@ -929,7 +917,7 @@ components:
                   maxLength: 15
                   example: 84.125.93.10
                 privateAddress:
-                  $ref: '#/components/schemas/CreateSubscriptionDetailLocal/properties/device/properties/ipv4Address/properties/publicAddress'
+                  $ref: '#/components/schemas/CreateSubscriptionDetail/properties/device/properties/ipv4Address/properties/publicAddress'
                 publicPort:
                   description: TCP or UDP port number
                   type: integer
@@ -949,49 +937,49 @@ components:
             ipv6Address:
               description: |
                 The device should be identified by the observed IPv6 address, or by any single IPv6 address from within the subnet allocated to the device (e.g. adding ::0 to the /64 prefix).
-              type: string
-              format: ipv6
-              maxLength: 45
-              example: 2001:db8:85a3:8d3:1319:8a2e:370:7344
+              allOf:
+                - description: A single IPv6 address with no subnet mask
+                  type: string
+                  format: ipv6
+                  maxLength: 45
+                  example: 2001:db8:85a3:8d3:1319:8a2e:370:7344
           minProperties: 1
-    ConfigLocal:
+    Config:
       description: Config schema allowing for device to be specified as part of subscription detail
       allOf:
         - description: |
-            Implementation-specific configuration parameters needed by the subscription manager for acquiring events.
-            In CAMARA we have predefined attributes like `subscriptionExpireTime`, `subscriptionMaxEvents`, `initialEvent`
-            Specific event type attributes must be defined in `subscriptionDetail`.
-            Note: if a request is performed for several event types, all subscribed events will use same `config` parameters.
+            Base schema for the `config` object: implementation-specific configuration parameters
+            needed by the subscription manager for acquiring events. It defines the attributes
+            common to all CAMARA subscription APIs (`subscriptionExpireTime`, `subscriptionMaxEvents`).
+
+            API projects MUST define their own `Config` schema in their main OpenAPI file, extending
+            `ConfigBase` via `allOf` to add the required, API-specific `subscriptionDetail` property.
+            API projects MAY also add the predefined, optional `initialEvent` property (see sample-service-subscriptions.yaml),
+            or omit it if sending a notification at subscription creation time is not relevant to the API’s event type(s).
           type: object
-          required:
-            - subscriptionDetail
           properties:
-            subscriptionDetail:
-              description: The detail of the requested event subscription.
-              type: object
             subscriptionExpireTime:
               type: string
               format: date-time
               maxLength: 64
               example: '2023-01-17T13:18:23.682Z'
-              description: The subscription expiration time (in date-time format) requested by the API consumer. It must follow [RFC 3339](https://datatracker.ietf.org/doc/html/rfc3339#section-5.6) and must have time zone. Up to API project decision to keep it.
+              description: The subscription expiration time (in date-time format) requested by the API consumer. It must follow [RFC 3339](https://datatracker.ietf.org/doc/html/rfc3339#section-5.6) and must have time zone.
             subscriptionMaxEvents:
               type: integer
               format: int32
-              description: Identifies the maximum number of event reports to be generated (>=1) requested by the API consumer - Once this number is reached, the subscription ends. Up to API project decision to keep it.
+              description: Identifies the maximum number of event reports to be generated (>=1) requested by the API consumer - Once this number is reached, the subscription ends.
               minimum: 1
               maximum: 1000000
               example: 5
-            initialEvent:
-              type: boolean
-              description: |
-                Set to `true` by API consumer if consumer wants to get an event as soon as the subscription is created and current situation reflects event request.
-                Example: Consumer request Roaming event. If consumer sets initialEvent to true and device is in roaming situation, an event is triggered
-                Up to API project decision to keep it.
         - type: object
           properties:
             subscriptionDetail:
-              $ref: '#/components/schemas/CreateSubscriptionDetailLocal'
+              $ref: '#/components/schemas/CreateSubscriptionDetail'
+            initialEvent:
+              description: |
+                Set to `true` by API consumer if consumer wants to get an event as soon as the subscription is created and current situation reflects event request.
+                Example: Consumer request Roaming event. If consumer sets initialEvent to true and device is in roaming situation, an event is triggered
+              type: boolean
     ApiEventType:
       type: string
       description: |
@@ -1135,7 +1123,7 @@ components:
           items:
             $ref: '#/components/schemas/ApiEventType'
         config:
-          $ref: '#/components/schemas/ConfigLocal'
+          $ref: '#/components/schemas/Config'
         id:
           $ref: '#/components/parameters/SubscriptionId/schema'
         startsAt:
@@ -1206,7 +1194,7 @@ components:
           items:
             $ref: '#/components/schemas/ApiEventType'
         config:
-          $ref: '#/components/schemas/ConfigLocal'
+          $ref: '#/components/schemas/Config'
       discriminator:
         propertyName: protocol
         mapping:
@@ -1312,7 +1300,7 @@ components:
 
             If the API consumer provides more than one device identifier in their request, and this schema is included in the response definition, the API provider MUST use it to return a single identifier which is the one they are using to fulfil the request, even if the identifiers do not match the same device. API provider does not perform any logic to validate/correlate that the indicated device identifiers match the same device. No error should be returned if the identifiers are otherwise valid to prevent API consumers correlating different identifiers with a given end user.
           allOf:
-            - $ref: '#/components/schemas/CreateSubscriptionDetailLocal/properties/device'
+            - $ref: '#/components/schemas/CreateSubscriptionDetail/properties/device'
             - maxProperties: 1
         subscriptionId:
           $ref: '#/components/parameters/SubscriptionId/schema'

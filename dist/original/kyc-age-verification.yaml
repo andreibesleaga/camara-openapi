@@ -31,7 +31,7 @@ info:
     If successful, a JSON object is returned containing the following data:
     - `ageCheck`: Indicate 'true' when the age of the user is the same age or older than the age threshold (age >= age threshold), and 'false' if not (age < age threshold).  Otherwise, 'not_available'.
     - `verifiedStatus`: true if the information provided was checked against another form of official identification (Note), otherwise false. Note: Depending on the country, credit-check or other mechanism can be used instead of official identification for Age Verification. For details, please contact API Provider.
-    - `identityMatchScore`: The overall score of identity information available in the Operator, information either provided in the request body comparing it to the one that the MNO holds or directly using internal MNO's information. It is optional for the Operator to return the Identity match score.
+    - `identityMatchScore`: The overall score of identity information available in the Operator, information either provided in the request body comparing it to the one that the network operator holds or directly using internal network operator's information. It is optional for the Operator to return the Identity match score.
     - `contentLock`: Indicates if the subscription associated with the phone number has any kind of content lock (i.e certain web content blocked).
     - `parentalControl`: Indicates if the subscription associated with the phone number has any kind of parental control activated.
 
@@ -43,7 +43,7 @@ info:
 
     - If the authentication access token is not valid, a `401 UNAUTHENTICATED` error is returned
     - If the API call contains a formatting or other any other syntactic error, a `400 INVALID_ARGUMENT` error is returned.
-    - If the network subscription cannot be identified from the provided parameters (e.g. the subscription identifier is not associated with any customer of the CSP), a `404 IDENTIFIER_NOT_FOUND` error is returned.
+    - If the network subscription cannot be identified from the provided parameters (e.g. the subscription identifier is not associated with any customer of the network operator), a `404 IDENTIFIER_NOT_FOUND` error is returned.
     - If the API consumer has a valid access token that does not have the required scope to obtain Age Verification information for the specified network subscription, then a `403 PERMISSION_DENIED` error is returned.
 
     <!-- CAMARA:MANDATORY:additional-error-responses:BEGIN -->
@@ -192,6 +192,8 @@ paths:
           $ref: '#/components/responses/Generic404'
         "422":
           $ref: '#/components/responses/Generic422'
+        "429":
+          $ref: '#/components/responses/Generic429'
 
 components:
   securitySchemes:
@@ -496,3 +498,36 @@ components:
                 status: 422
                 code: UNNECESSARY_IDENTIFIER
                 message: An explicit phone number has been provided when one is already associated with the access token
+
+    Generic429:
+      description: Too Many Requests
+      headers:
+        x-correlator:
+          $ref: "../common/CAMARA_common.yaml#/components/headers/x-correlator"
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "../common/CAMARA_common.yaml#/components/schemas/ErrorInfo"
+              - type: object
+                properties:
+                  status:
+                    enum:
+                      - 429
+                  code:
+                    enum:
+                      - QUOTA_EXCEEDED
+                      - TOO_MANY_REQUESTS
+          examples:
+            GENERIC_429_QUOTA_EXCEEDED:
+              description: Request is rejected due to exceeding a business quota limit
+              value:
+                status: 429
+                code: QUOTA_EXCEEDED
+                message: Out of resource quota.
+            GENERIC_429_TOO_MANY_REQUESTS:
+              description: Access to the API has been temporarily blocked due to rate or spike arrest limits being reached
+              value:
+                status: 429
+                code: TOO_MANY_REQUESTS
+                message: Rate limit reached.

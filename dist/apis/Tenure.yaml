@@ -22,7 +22,7 @@ info:
     - `tenureDate`: The date from which continuous tenure of the identified network subscriber is required to be confirmed. This field is always required.
     - `phoneNumber`: The network subscription identifier (i.e. the phone number of the subscriber). This field is only required if no network subscription identifier is associated with the access token.
 
-    Note: MNOs may implement a threshold for the tenureDate aligned with their respective regulations. In that case if the tenureDate value in the request body is over the operator's threshold  an error `400 OUT_OF_RANGE `is returned with an explicit message to explain the limitation.
+    Note: MNOs may implement a threshold for the tenureDate aligned with their respective regulations. In that case if the tenureDate value in the request body is over the operator's threshold an error `400 OUT_OF_RANGE` is returned with an explicit message to explain the limitation.
 
     ## Outputs
 
@@ -239,7 +239,6 @@ paths:
                       code:
                         enum:
                           - PERMISSION_DENIED
-                          - INVALID_TOKEN_CONTEXT
               examples:
                 GENERIC_403_PERMISSION_DENIED:
                   description: Permission denied. OAuth2 token access does not have the required scope or when the user fails operational security
@@ -247,12 +246,6 @@ paths:
                     status: 403
                     code: PERMISSION_DENIED
                     message: Client does not have sufficient permissions to perform this action.
-                GENERIC_403_INVALID_TOKEN_CONTEXT:
-                  description: Reflect some inconsistency between information in some field of the API and the related OAuth2 Token
-                  value:
-                    status: 403
-                    code: INVALID_TOKEN_CONTEXT
-                    message: Request body is not consistent with access token.
         '404':
           description: Not found
           headers:
@@ -314,7 +307,7 @@ paths:
                     code: SERVICE_NOT_APPLICABLE
                     message: The service is not available for the provided identifier.
                 GENERIC_422_MISSING_IDENTIFIER:
-                  description: An identifier is not included in the request and the device or phone number identification cannot be derived from the 3-legged access token
+                  description: An identifier is not included in the request and the device or phone number identification cannot be derived from the access token
                   value:
                     status: 422
                     code: MISSING_IDENTIFIER
