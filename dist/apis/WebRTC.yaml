@@ -84,39 +84,20 @@ info:
     You must check the webrtc-registration API to retrieve a valid registration
     on the network that allows you to send calls (IMS registration).
 
-    Once this is completed, you can consume the POST /sessions/ endpoint to call
-    a remote destination.
+    Once this is completed, you can consume the `POST /sessions` endpoint to call
+    a remote destination. The request MUST include the local SDP `offer`.
 
-    ```
-    POST /webrtc-call-handling/v0.2/sessions
-    {
-      "originatorAddress": "tel:+17085852753",
-      "receiverAddress": "tel:+17085854000",
-    }
-    ```
-
-    This will create a call, but without local media you will have a problem, or
-    maybe the network will reject your call. You need to add a local SDP offer.
-
-    > **The WebRTC SDP local candidate**
+    > **The WebRTC SDP local offer**
     >
-    > What is usually done, before attempt to create a call, is to solve the SDP local
-    description. This is, how you are going to send the media. To explain it briefly,
-    browsers offer the
-    [WebRTC API](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API) that
-    include `getUserMedia()` and `RTCPeerConnection` interfaces that will simplify
-    the process.
-    >
-    > In summary, we need to obtain the media, create the `RTCPeerConnection`
-    and use it's SDP on our CAMARA webrtc-call-handling API as the offer. There
-    is extra information about this concept on the SupportingDocuments folder.
-
-    Once you retrieve you local SDP offer, you modify your session including it,
-    or maybe you prefer to solve the local candidate before attempt the call, in
-    that case, you will include your local offer on the audio/video session creation.
+    > Before creating a call, the client obtains its local SDP description, which
+    > describes how it is going to send the media. Browsers offer the
+    > [WebRTC API](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API),
+    > including the `getUserMedia()` and `RTCPeerConnection` interfaces, to obtain
+    > the media and create the SDP offer. Extra information about this concept is
+    > available in the SupportingDocuments folder.
 
     ```
-    POST /webrtc-call-handling/v0.2/sessions
+    POST /sessions
     {
         "originatorAddress": "tel:+17085852753",
         "receiverAddress": "tel:+17085854000",
@@ -127,10 +108,10 @@ info:
     ```
 
     Following this point, your call is progressing and the network will inform
-    about extra information required and connection status via de the
+    about extra information required and connection status via the
     webrtc-events-subscriptions API.
 
-    Check webrtc-events-subscriptions API inline documentation and supporting documents
+    Check webrtc-events-subscriptions API inline documentation and Supporting Documents
     for further information.
 
     ## 2. Hanging up a call
@@ -152,15 +133,14 @@ info:
     using the GET request, afterwards, you can present to the user some
     confirmation option to accept the call.
 
-    Final step is to include a local offer. We already seen at 3.1 that a local
-    SDP is required, in this case, we will use the PUT request to modify the
-    audio/video session and include the information about the responding device.
+    Final step is to accept the call with the local SDP `answer`, using the PUT
+    request with status `Connected`.
 
     Let's say that we are responding this session `0AEE1B58BAEEDA3EABA42B32EBB3DFE0DEAD`:
     ```
-    PUT /webrtc-call-handling/v0.2/sessions/0AEE1B58BAEEDA3EABA42B32EBB3DFE0DEAD/status
+    PUT /sessions/0AEE1B58BAEEDA3EABA42B32EBB3DFE0DEAD/status
     {
-        "status": "InProgress",
+        "status": "Connected",
         "answer": {
             "sdp": "v=0\r\no=- 4808447918291752114 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\na=extmap-allow-mixed\r\nm=audio 13765 UDP/TLS/RTP/SAVPF 111 63 9 0 8 13 110 126\r\nc=IN IP4 123.123.123.123\r\na=ice-ufrag:YoUo\r\na=ice-pwd:kK5J6IAgiKFDFU+2rC+FyZal\r\n...\r\n"
             }
@@ -168,16 +148,18 @@ info:
     ```
 
     <!-- CAMARA:MANDATORY:additional-error-responses:BEGIN -->
+
     # Additional CAMARA error responses
 
     The list of error codes in this API specification is not exhaustive. Therefore the API specification MAY not document some non-mandatory error statuses as indicated in `CAMARA API Design Guide`.
 
-    Please refer to the `CAMARA_common.yaml` of the Commonalities Release associated to this API version for a complete list of error responses. The applicable Commonalities Release can be identified in the `API Readiness Checklist` document associated to this API version.
+    Please refer to the `CAMARA_common.yaml` of the Commonalities Release associated to this API version for a complete list of error responses. The applicable Commonalities Release can be identified from the `x-camara-commonalities` field, the changelog and the metadata of the released API version.
 
     As a specific rule, error `501 - NOT_IMPLEMENTED` can be only a possible error response if it is explicitly documented in the API.
     <!-- CAMARA:MANDATORY:additional-error-responses:END -->
 
     <!-- CAMARA:MANDATORY:request-body-strictness:BEGIN -->
+
     # Request body strictness
 
     This API rejects requests with JSON request bodies that contain properties not declared in this specification, at any nesting level. Unknown properties result in a `400 INVALID_ARGUMENT` response.
@@ -207,8 +189,11 @@ info:
     - The `locationDetails` schema follows PIDF-LO concepts (3GPP TS 24.229,
     RFC 4119, RFC 5139, RFC 5491) with either a circle or ellipsoid shape.
     - If `callType` is omitted, it defaults to `REGULAR`.
+    - If the API provider does not support `EMERGENCY`, the request is rejected
+    with `422 WEBRTC_CALL_HANDLING.CALLTYPE_EMERGENCY_NOT_SUPPORTED`.
 
     <!-- CAMARA:MANDATORY:authorization-and-authentication:BEGIN -->
+
     # Authorization and authentication
 
     The "Camara Security and Interoperability Profile" provides details of how an API consumer requests an access token. Please refer to Identity and Consent Management (https://github.com/camaraproject/IdentityAndConsentManagement/) for the released version of the profile.
@@ -221,7 +206,7 @@ info:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
   version: wip
-  x-camara-commonalities: 0.6
+  x-camara-commonalities: 0.9.0
 externalDocs:
   description: Product documentation at CAMARA
   url: https://github.com/camaraproject/WebRTC
@@ -275,13 +260,88 @@ paths:
                 SessionCreated:
                   $ref: '#/components/examples/exampleMediaSessionResponse'
         '400':
-          $ref: '#/components/responses/Generic400'
+          description: Bad Request
+          headers:
+            x-correlator:
+              description: Correlation id for the different services
+              schema:
+                type: string
+                description: Correlator string, UUID format recommended but any string matching the pattern can be used
+                pattern: ^[a-zA-Z0-9-_:;.\/<>{}]{0,256}$
+                maxLength: 256
+                example: b4333c46-49c0-4f62-80d7-f0ef930f1c46
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/paths/~1sessions/post/responses/422/content/application~1json/schema/allOf/0'
+                  - type: object
+                    properties:
+                      status:
+                        enum:
+                          - 400
+                      code:
+                        enum:
+                          - INVALID_ARGUMENT
+              examples:
+                GENERIC_400_INVALID_ARGUMENT:
+                  description: Invalid Argument. Generic Syntax Exception
+                  value:
+                    status: 400
+                    code: INVALID_ARGUMENT
+                    message: Client specified an invalid argument, request body or query param.
         '401':
-          $ref: '#/components/responses/Generic401'
+          description: Unauthorized
+          headers:
+            x-correlator:
+              $ref: '#/paths/~1sessions/post/responses/400/headers/x-correlator'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/paths/~1sessions/post/responses/422/content/application~1json/schema/allOf/0'
+                  - type: object
+                    properties:
+                      status:
+                        enum:
+                          - 401
+                      code:
+                        enum:
+                          - UNAUTHENTICATED
+              examples:
+                GENERIC_401_UNAUTHENTICATED:
+                  description: Request cannot be authenticated and a new authentication is required
+                  value:
+                    status: 401
+                    code: UNAUTHENTICATED
+                    message: Request not authenticated due to missing, invalid, or expired credentials. A new authentication is required.
         '403':
-          $ref: '#/components/responses/Generic403'
-        '501':
-          description: Not Implemented
+          description: Forbidden
+          headers:
+            x-correlator:
+              $ref: '#/paths/~1sessions/post/responses/400/headers/x-correlator'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/paths/~1sessions/post/responses/422/content/application~1json/schema/allOf/0'
+                  - type: object
+                    properties:
+                      status:
+                        enum:
+                          - 403
+                      code:
+                        enum:
+                          - PERMISSION_DENIED
+              examples:
+                GENERIC_403_PERMISSION_DENIED:
+                  description: Permission denied. OAuth2 token access does not have the required scope or when the user fails operational security
+                  value:
+                    status: 403
+                    code: PERMISSION_DENIED
+                    message: Client does not have sufficient permissions to perform this action.
+        '422':
+          description: Unprocessable Content
           headers:
             x-correlator:
               $ref: '#/components/headers/x-correlator'
@@ -289,22 +349,42 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/ErrorInfo'
+                  - type: object
+                    description: A structured error response providing details about a failed request, including the HTTP status code, an error code, and a human-readable message
+                    required:
+                      - status
+                      - code
+                      - message
+                    properties:
+                      status:
+                        type: integer
+                        format: int32
+                        minimum: 100
+                        maximum: 599
+                        description: HTTP response status code
+                      code:
+                        type: string
+                        maxLength: 96
+                        description: A human-readable code to describe the error
+                      message:
+                        type: string
+                        maxLength: 512
+                        description: A human-readable description of what the event represents
                   - type: object
                     properties:
                       status:
                         enum:
-                          - 501
+                          - 422
                       code:
                         enum:
-                          - CALLTYPE_EMERGENCY_NOT_SUPPORTED
+                          - WEBRTC_CALL_HANDLING.CALLTYPE_EMERGENCY_NOT_SUPPORTED
               examples:
-                501_CALLTYPE_EMERGENCY_NOT_SUPPORTED:
-                  description: The implementation of API provider does not support the `callType` of `EMERGENCY`.
+                WEBRTC_CALL_HANDLING_422_CALLTYPE_EMERGENCY_NOT_SUPPORTED:
+                  description: The API provider does not support the `callType` of `EMERGENCY`.
                   value:
-                    status: 501
-                    code: CALLTYPE_EMERGENCY_NOT_SUPPORTED
-                    message: Server does not support call type EMERGENCY.
+                    status: 422
+                    code: WEBRTC_CALL_HANDLING.CALLTYPE_EMERGENCY_NOT_SUPPORTED
+                    message: Call type EMERGENCY is not supported.
   /sessions/{mediaSessionId}:
     get:
       tags:
@@ -334,13 +414,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/MediaSessionResponse'
         '400':
-          $ref: '#/components/responses/Generic400'
+          $ref: '#/paths/~1sessions/post/responses/400'
         '401':
-          $ref: '#/components/responses/Generic401'
+          $ref: '#/paths/~1sessions/post/responses/401'
         '403':
-          $ref: '#/components/responses/Generic403'
+          $ref: '#/paths/~1sessions/post/responses/403'
         '404':
-          $ref: '#/components/responses/Generic404'
+          description: Not found
+          headers:
+            x-correlator:
+              $ref: '#/paths/~1sessions/post/responses/400/headers/x-correlator'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/paths/~1sessions/post/responses/422/content/application~1json/schema/allOf/0'
+                  - type: object
+                    properties:
+                      status:
+                        enum:
+                          - 404
+                      code:
+                        enum:
+                          - NOT_FOUND
+              examples:
+                GENERIC_404_NOT_FOUND:
+                  description: Resource is not found
+                  value:
+                    status: 404
+                    code: NOT_FOUND
+                    message: The specified resource is not found.
     delete:
       tags:
         - Call Handling
@@ -364,13 +467,13 @@ paths:
             x-correlator:
               $ref: '#/components/headers/x-correlator'
         '400':
-          $ref: '#/components/responses/Generic400'
+          $ref: '#/paths/~1sessions/post/responses/400'
         '401':
-          $ref: '#/components/responses/Generic401'
+          $ref: '#/paths/~1sessions/post/responses/401'
         '403':
-          $ref: '#/components/responses/Generic403'
+          $ref: '#/paths/~1sessions/post/responses/403'
         '404':
-          $ref: '#/components/responses/Generic404'
+          $ref: '#/paths/~1sessions~1%7BmediaSessionId%7D/get/responses/404'
   /sessions/{mediaSessionId}/status:
     put:
       tags:
@@ -400,14 +503,15 @@ paths:
               Update ringing (status update without SDP):
                 $ref: '#/components/examples/exampleStatusChangeRinging'
               Answer with location (callee accepts and shares location):
-                $ref: '#/components/examples/exampleSessionStatusConnectedWithLocation'
+                $ref: '#/components/examples/exampleStatusChangeConnectedWithLocation'
               Location update (post-setup location sharing):
-                $ref: '#/components/examples/exampleSessionStatusLocationUpdate'
+                $ref: '#/components/examples/exampleStatusChangeLocationUpdate'
       responses:
         '200':
           description: |
             Updated the session status (with SDP data).
             It will confirm the status defined on the PUT operation.
+            A request that doesn't change the status or SDP returns `200` with the current session.
           headers:
             x-correlator:
               $ref: '#/components/headers/x-correlator'
@@ -430,19 +534,14 @@ paths:
                   $ref: '#/components/examples/exampleSessionStatusConnectedWithLocation'
                 Location update (post-setup location sharing):
                   $ref: '#/components/examples/exampleSessionStatusLocationUpdate'
-        '204':
-          description: Updated the session status (no content)
-          headers:
-            x-correlator:
-              $ref: '#/components/headers/x-correlator'
         '400':
-          $ref: '#/components/responses/Generic400'
+          $ref: '#/paths/~1sessions/post/responses/400'
         '401':
-          $ref: '#/components/responses/Generic401'
+          $ref: '#/paths/~1sessions/post/responses/401'
         '403':
-          $ref: '#/components/responses/Generic403'
+          $ref: '#/paths/~1sessions/post/responses/403'
         '404':
-          $ref: '#/components/responses/Generic404'
+          $ref: '#/paths/~1sessions~1%7BmediaSessionId%7D/get/responses/404'
 components:
   securitySchemes:
     openId:
@@ -465,6 +564,7 @@ components:
       schema:
         type: string
         maxLength: 256
+        pattern: ^[^\x00-\x1F\x7F]+$
     pathParamMediaSessionId:
       name: mediaSessionId
       in: path
@@ -475,6 +575,7 @@ components:
       schema:
         type: string
         maxLength: 256
+        pattern: ^[^\x00-\x1F\x7F]+$
     x-correlator:
       name: x-correlator
       in: header
@@ -489,7 +590,7 @@ components:
       maxLength: 256
       example: b4333c46-49c0-4f62-80d7-f0ef930f1c46
     MediaSessionInformation:
-      description: Information about a WebRTC media session including originator and receiver identities, SDP offer/answer, and call status
+      description: Information about a WebRTC media session including originator and receiver identities, SDP offer, call type and location
       type: object
       properties:
         originatorAddress:
@@ -497,6 +598,7 @@ components:
         originatorName:
           type: string
           maxLength: 256
+          pattern: ^[^\x00-\x1F\x7F]+$
           description: Friendly name of the call originator
           example: Alice
         receiverAddress:
@@ -504,13 +606,10 @@ components:
         receiverName:
           type: string
           maxLength: 256
+          pattern: ^[^\x00-\x1F\x7F]+$
           description: Friendly name of the call terminator
           example: Bob
-        status:
-          $ref: '#/components/schemas/SessionStatus'
         offer:
-          $ref: '#/components/schemas/WrtcSdpDescriptor'
-        answer:
           $ref: '#/components/schemas/WrtcSdpDescriptor'
         callType:
           type: string
@@ -544,9 +643,14 @@ components:
         - $ref: '#/components/schemas/MediaSessionInformation'
         - type: object
           properties:
+            status:
+              $ref: '#/components/schemas/SessionStatus'
+            answer:
+              $ref: '#/components/schemas/WrtcSdpDescriptor'
             mediaSessionId:
               type: string
               maxLength: 256
+              pattern: ^[^\x00-\x1F\x7F]+$
               description: The media session ID created by the network.
               example: 0AEE1B58BAEEDA3EABA42B32EBB3DFE07E9CFF402EAF9EED8EF
     MediaSessionStatusChange:
@@ -572,17 +676,16 @@ components:
 
         **ANSWER**: This type represents an answer in WebRTC Signaling. This element is not
         present in case there is no answer yet, or the session invitation has
-        been declined by the Terminating Participant.This element MUST NOT be
-        present in a request from the application to the server to create a
-        session.
+        been declined by the Terminating Participant.
       properties:
         sdp:
           type: string
           maxLength: 65536
+          pattern: ^[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+$
           description: An inlined session description in SDP format [RFC4566].If XML syntax is used, the content of this element SHALL be embedded in a CDATA section
     SessionStatus:
       type: string
-      description: Provides the status of the media session. During the session creation, this attribute SHALL NOT be included in the request.
+      description: Provides the status of the media session.
       enum:
         - Initial
         - InProgress
@@ -600,28 +703,6 @@ components:
         - NotReachable
         - Busy
       example: Ringing
-    ErrorInfo:
-      description: A structured error response providing details about a failed request, including the HTTP status code, an error code, and a human-readable message
-      type: object
-      required:
-        - status
-        - code
-        - message
-      properties:
-        status:
-          type: integer
-          format: int32
-          minimum: 100
-          maximum: 599
-          description: HTTP response status code
-        code:
-          type: string
-          maxLength: 96
-          description: Friendly Code to describe the error
-        message:
-          type: string
-          maxLength: 512
-          description: A human readable description of what the event represent
     Address:
       type: string
       description: |-
@@ -779,6 +860,40 @@ components:
       description: Example request body used to notify that the receiver endpoint is ringing
       value:
         status: Ringing
+    exampleStatusChangeConnectedWithLocation:
+      summary: Answering party accepts the call and shares their device location
+      description: Example request body used to answer the call with the SDP answer and the answering party's device location
+      value:
+        status: Connected
+        answer:
+          sdp: "v=0\r\no=- 4576312012535546667 4 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\nm=audio 47510 RTP/SAVPF 102 113\r\nc=IN IP6 2001:e0:410:243a:a344:cee7:7b39:bb1e\r\nb=AS:64\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=rtpmap:102 AMR-WB/16000\r\na=fmtp:102 octet-align=0; mode-set=0,1,2; mode-change-capability=2\r\na=rtpmap:113 telephone-event/16000\r\na=ptime:20\r\n"
+        locationDetails:
+          shape: Circle
+          coordinates:
+            latitude: 40.7128
+            longitude: -74.006
+            radius: 50
+          method: GPS
+          confidence:
+            pdf: normal
+            value: 88
+          timestamp: '2025-10-06T19:32:10Z'
+    exampleStatusChangeLocationUpdate:
+      summary: Post-setup location update by either party
+      description: Example request body used by either call party to share an updated device location after the session is established
+      value:
+        status: Connected
+        locationDetails:
+          shape: Circle
+          coordinates:
+            latitude: 40.7148
+            longitude: -74.0075
+            radius: 30
+          method: GPS
+          confidence:
+            pdf: normal
+            value: 95
+          timestamp: '2025-10-06T19:45:00Z'
     exampleSessionStatus183InProgress:
       description: Session status update indicating the call is in progress (183 Session Progress)
       value:
@@ -933,125 +1048,3 @@ components:
             pdf: normal
             value: 97
           timestamp: '2025-10-06T19:31:25Z'
-  responses:
-    Generic400:
-      description: Bad Request
-      headers:
-        x-correlator:
-          $ref: '#/components/headers/x-correlator'
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: '#/components/schemas/ErrorInfo'
-              - type: object
-                properties:
-                  status:
-                    enum:
-                      - 400
-                  code:
-                    enum:
-                      - INVALID_ARGUMENT
-                      - OUT_OF_RANGE
-          examples:
-            GENERIC_400_INVALID_ARGUMENT:
-              description: Invalid Argument. Generic Syntax Exception
-              value:
-                status: 400
-                code: INVALID_ARGUMENT
-                message: Client specified an invalid argument, request body or query param.
-            GENERIC_400_OUT_OF_RANGE:
-              description: Out of Range. Specific Syntax Exception used when a given field has a pre-defined range or a invalid filter criteria combination is requested
-              value:
-                status: 400
-                code: OUT_OF_RANGE
-                message: Client specified an invalid range.
-    Generic401:
-      description: Unauthorized
-      headers:
-        x-correlator:
-          $ref: '#/components/headers/x-correlator'
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: '#/components/schemas/ErrorInfo'
-              - type: object
-                properties:
-                  status:
-                    enum:
-                      - 401
-                  code:
-                    enum:
-                      - UNAUTHENTICATED
-          examples:
-            GENERIC_401_UNAUTHENTICATED:
-              description: Request cannot be authenticated and a new authentication is required
-              value:
-                status: 401
-                code: UNAUTHENTICATED
-                message: Request not authenticated due to missing, invalid, or expired credentials. A new authentication is required.
-    Generic403:
-      description: Forbidden
-      headers:
-        x-correlator:
-          $ref: '#/components/headers/x-correlator'
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: '#/components/schemas/ErrorInfo'
-              - type: object
-                properties:
-                  status:
-                    enum:
-                      - 403
-                  code:
-                    enum:
-                      - PERMISSION_DENIED
-                      - INVALID_TOKEN_CONTEXT
-          examples:
-            GENERIC_403_PERMISSION_DENIED:
-              description: Permission denied. OAuth2 token access does not have the required scope or when the user fails operational security
-              value:
-                status: 403
-                code: PERMISSION_DENIED
-                message: Client does not have sufficient permissions to perform this action.
-            GENERIC_403_INVALID_TOKEN_CONTEXT:
-              description: Reflect some inconsistency between information in some field of the API and the related OAuth2 Token
-              value:
-                status: 403
-                code: INVALID_TOKEN_CONTEXT
-                message: originator info is not consistent with access token.
-    Generic404:
-      description: Not found
-      headers:
-        x-correlator:
-          $ref: '#/components/headers/x-correlator'
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: '#/components/schemas/ErrorInfo'
-              - type: object
-                properties:
-                  status:
-                    enum:
-                      - 404
-                  code:
-                    enum:
-                      - NOT_FOUND
-                      - IDENTIFIER_NOT_FOUND
-          examples:
-            GENERIC_404_NOT_FOUND:
-              description: Resource is not found
-              value:
-                status: 404
-                code: NOT_FOUND
-                message: The specified resource is not found.
-            GENERIC_404_IDENTIFIER_NOT_FOUND:
-              description: Some identifier cannot be matched to a device
-              value:
-                status: 404
-                code: IDENTIFIER_NOT_FOUND
-                message: Device identifier not found.

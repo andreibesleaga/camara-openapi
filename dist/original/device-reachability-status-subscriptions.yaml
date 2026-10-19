@@ -2,79 +2,81 @@ openapi: 3.0.3
 info:
   title: Device Reachability Status Subscriptions
   description: |
-    This API provides the API consumer with the ability to subscribe to Reachability status events.
+    This API provides the API consumer with the ability to subscribe to reachability status events.
 
     # Introduction
 
-    ## Reachability Status
-    API consumer is able to be notified whether the reachability status of a certain user device has changed to either data- or sms-usage.
-    This capability is provided via a subscription  request - in this case the reachability situation is part of the event notification, which is sent back to the event subscriber when reachability situation has changed.
+    The API consumer is able to be notified whenever the reachability status of a certain user device has changed for either data or SMS connectivity. This capability is requested via a subscription request - in this case the reachability status is not contained in the API response, but instead an event notification is sent back to the event subscriber whenever the reachability situation changes.
 
     # Relevant terms and definitions
 
-    * **Device**: A device refers to any physical entity that can connect to a network and participate in network communication.
+    * **Reachable**:\
+       A device is considered to be reachable if it has mobile data connectivity, or can receive SMS messages.
 
-        At least one identifier for the device out of four options must be provided: IPv4 address, IPv6 address, Phone number, or Network Access Identifier assigned by the mobile network operator for the device. Where more than one device identifier is provided, only one identifier will be selected by the implementation and this choice indicated to the API consumer in the session creation response.
+    * **Connectivity:**\
+      Indicates the connectivity types (mobile data, SMS, or both) by which the device is reachable from the network. A device is considered to be disconnected if it cannot be reached using either mobile data or SMS connectivity.
 
-        Note: Network Access Identifier is defined for future use and will not be supported with this version of the API.
+    * **Device**:\
+      A device refers to any physical hardware that can connect to a mobile network and participate in network communication.
+
+      At least one identifier for the device out of four options must be provided: IPv4 address, IPv6 address, phone number, or network access identifier assigned by the mobile network operator for the device. Where more than one device identifier is provided, only one identifier will be selected by the implementation and this choice indicated to the API consumer in the session creation response.
+
+      Note: Network Access Identifier is defined for future use and will not be supported with this version of the API.
 
     # API Functionality
 
     The API exposes following capability:
 
-    ## Device reachability status subscription
+    ## Device Reachability Status Subscription
 
-    These endpoints allow to manage event subscription on reachability device status event.
-    The CAMARA subscription model is detailed in the CAMARA API design guideline document and follows CloudEvents specification.
+    These endpoints allow the API consumer to manage event subscriptions for device reachability status events.
+    The CAMARA subscription model is described in the `CAMARA API Event Subscription and Notification Guide` and uses notifications that follow the CloudEvents specification.
 
-    When subscribing, it is mandatory to provide the event `types` you are subscribing to, as multiple subscription-types are managed by this API.
+    When creating a subscription, it is mandatory to provide the event types you are subscribing to, as multiple subscription-types are managed by this API.
 
-    Following event ``types`` are managed for this API:
-      - ``org.camaraproject.device-reachability-status-subscriptions.v0.reachability-data``: Event triggered when the device is connected to the network for Data usage (regardless of the SMS reachability).
+    The following event types may be requested for this API:
+      - `org.camaraproject.device-reachability-status-subscriptions.v0.reachability-data` is sent when the device becomes connected to the network for data usage (regardless of the SMS reachability status)
+      - `org.camaraproject.device-reachability-status-subscriptions.v0.reachability-sms` is sent when the device becomes connected to the network for SMS usage (regardless of the data reachability status)
+      - `org.camaraproject.device-reachability-status-subscriptions.v0.reachability-disconnected` is sent when the device becomes disconnected from the network
 
-      - ``org.camaraproject.device-reachability-status-subscriptions.v0.reachability-sms``: Event triggered when the device is connected to the network only for SMS usage
-
-      - ``org.camaraproject.device-reachability-status-subscriptions.v0.reachability-disconnected``: Event triggered when the device is not connected.
-
-    Note: Additionally, the following events could be sent, which do not require a dedicated subscription:
+    Note: Additionally, the following events may be sent, which do not require a dedicated subscription:
       - `org.camaraproject.device-reachability-status-subscriptions.v0.subscription-started` is sent when the subscription starts.
       - `org.camaraproject.device-reachability-status-subscriptions.v0.subscription-updated` is sent when the subscription is updated.
       - `org.camaraproject.device-reachability-status-subscriptions.v0.subscription-ended` is sent when the subscription ends.
 
-    It is used in following cases:
+    The `subscription-ended` event may be used in following cases:
       - the subscription expire time (optionally set by the requester) has been reached
       - the maximum number of subscription events (optionally set by the requester) has been reached
-      - the subscription was deleted by the requester
-      - the Access Token `sinkCredential` (optionally set by the requester) expiration time has been reached
-      - the API server has to stop sending notification prematurely
+      - the subscription was deleted by the API consumer
+      - the expiry time for the access token `sinkCredential` (optionally set by the API consumer) time has been reached
+      - the API provider has to stop sending notifications early
 
-    **Note on combined usage of ``initialEvent`` and ``subscriptionMaxEvents``**:
+    **Note on combined usage of `initialEvent` and `subscriptionMaxEvents`**:
 
-    If an event is triggered following ``initialEvent`` set to true,
-    this event will be counted towards ``subscriptionMaxEvents`` (if provided).
+    If an initial event is triggered because `initialEvent` set to true, that event will count towards `subscriptionMaxEvents` if that has been specified.
 
-    **Clarification on ``initialEvent`` & ``event-type`` behaviour:**
+    **Clarification on `initialEvent` setting and event type behaviour:**
 
     Following table illustrate behaviour regarding event triggering depending on **initial** reachability state of the device:
 
-    | subscribed event-type | device reachability status at subscription time | event sent if ``initialEvent`` set to true | Explanation |
-    | ----------------------| ------------- | --------------- | ---------------|
-    | reachability-data  | Device can use data |   Yes | The device is reachable for data, so the event is triggered. |
-    | reachability-data  | Device is disconnected or SMS-only | No | The device cannot use data, so no event is sent. |
-    | reachability-sms  | Device can use data | No | The device can use data, but for thids event is only for SMS. |
-    | reachability-sms  |  Device is SMS-only | Yes | The device supports SMS, so the event is triggered. |
-    | reachability-sms  | Device is disconnected | No | The device cannot send SMS, so no event is send. |
-    | reachability-disconnected  | Device can use data or SMS usage | No | The device is reachable, so no "disconnected" event is sent. |
-    | reachability-disconnected  | Device is disconnected | Yes | The device is disconnected, so the event is triggered. |
+    | subscribed event-type      | device reachability status at subscription time  | event sent if `initialEvent` is `true` | Explanation                                   |
+    | -------------------------- | ------------------------------------------------ | -------------------------------------- | --------------------------------------------- |
+    | reachability-data          | Device is connected for data and possibly SMS    | Yes                                    | The device is reachable using data            |
+    | reachability-data          | Device is connected for SMS only                 | No                                     | The device is not reachable using data        |
+    | reachability-data          | Device is disconnected from the network          | No                                     | The device is not reachable using data        |
+    | reachability-sms           | Device is connected for SMS but not data         | Yes                                    | The device is reachable only using SMS        |
+    | reachability-sms           | Device is connected for data only                | No                                     | The device is not reachable using SMS         |
+    | reachability-sms           | Device is disconnected from the network          | No                                     | The device is not reachable using SMS         |
+    | reachability-disconnected  | Device is disconnected from the network          | Yes                                    | The device is not reachable at all            |
+    | reachability-disconnected  | Device is connected for data and/or SMS          | No                                     | The device is reachable using data and/or SMS |
 
     ### Notifications callback
 
-    This endpoint describes the event notification received on subscription listener side when the event occurred.
-    As for subscription, detailed description of the event notification is provided in the CAMARA API design guideline document.
+    This endpoint describes the format of the event notification received by the API consumer when an event is sent.
+    A detailed description of the event subscription and notification mechanism is provided in the `CAMARA API Event Subscription and Notification Guide`.
 
-    _**WARNING**: This callback endpoint must be exposed on the consumer side as `POST /{$request.body#/sink}`.
-      Developers may provide a callback URL on which notifications regarding reachability-status can be received from the service provider.
-      If an event occurs the application will send events to the provided webhook - `sink`._
+    _**WARNING**:\
+      API consumers must provide a callback URL on which reachability status notifications from the API provider can be received. This callback endpoint must be exposed by API consumer as `POST /{$request.body#/sink}`. When an event occurs, the API provider will send the event to the URL specified by `sink`._
 
     <!-- CAMARA:MANDATORY:authorization-and-authentication:BEGIN -->
 
@@ -215,15 +217,15 @@ paths:
                     x-correlator:
                       $ref: "../common/CAMARA_common.yaml#/components/headers/x-correlator"
                 "400":
-                  $ref: "../common/CAMARA_common.yaml#/components/responses/Generic400"
+                  $ref: "../common/CAMARA_common.yaml#/components/responses/BadRequest400"
                 "401":
-                  $ref: "../common/CAMARA_common.yaml#/components/responses/Generic401"
+                  $ref: "../common/CAMARA_common.yaml#/components/responses/Unauthenticated401"
                 "403":
-                  $ref: "../common/CAMARA_common.yaml#/components/responses/Generic403"
+                  $ref: "../common/CAMARA_common.yaml#/components/responses/PermissionDenied403"
                 "410":
-                  $ref: "../common/CAMARA_common.yaml#/components/responses/Generic410"
+                  $ref: "../common/CAMARA_event_common.yaml#/components/responses/SinkGone410"
                 "429":
-                  $ref: "../common/CAMARA_common.yaml#/components/responses/Generic429"
+                  $ref: "#/components/responses/TooManyRequestsOrQuotaExceeded429"
               security:
                 - {}
                 - notificationsBearerAuth: []
@@ -255,15 +257,17 @@ paths:
         "400":
           $ref: "../common/CAMARA_event_common.yaml#/components/responses/CreateSubscriptionBadRequest400"
         "401":
-          $ref: "../common/CAMARA_common.yaml#/components/responses/Generic401"
+          $ref: "../common/CAMARA_common.yaml#/components/responses/Unauthenticated401"
         "403":
           $ref: "../common/CAMARA_event_common.yaml#/components/responses/SubscriptionPermissionDenied403"
+        "404":
+          $ref: "../common/CAMARA_common.yaml#/components/responses/IdentifierNotFound404"
         "409":
-          $ref: "../common/CAMARA_common.yaml#/components/responses/Generic409"
+          $ref: "../common/CAMARA_event_common.yaml#/components/responses/CreateSubscriptionConflict409"
         "422":
-          $ref: "../common/CAMARA_event_common.yaml#/components/responses/CreateSubscriptionUnprocessableEntity422"
+          $ref: "../common/CAMARA_event_common.yaml#/components/responses/CreateSubscriptionDevice422"
         "429":
-          $ref: "../common/CAMARA_common.yaml#/components/responses/Generic429"
+          $ref: "#/components/responses/TooManyRequestsOrQuotaExceeded429"
 
     get:
       tags:
@@ -300,11 +304,11 @@ paths:
                 empty-list-of-subscriptions:
                   $ref: "#/components/examples/EMPTY_SUBSCRIPTION_LIST"
         "400":
-          $ref: "../common/CAMARA_common.yaml#/components/responses/Generic400"
+          $ref: "../common/CAMARA_common.yaml#/components/responses/BadRequest400"
         "401":
-          $ref: "../common/CAMARA_common.yaml#/components/responses/Generic401"
+          $ref: "../common/CAMARA_common.yaml#/components/responses/Unauthenticated401"
         "403":
-          $ref: "../common/CAMARA_common.yaml#/components/responses/Generic403"
+          $ref: "../common/CAMARA_common.yaml#/components/responses/PermissionDenied403"
 
   /subscriptions/{subscriptionId}:
     get:
@@ -341,11 +345,11 @@ paths:
         "400":
           $ref: "../common/CAMARA_event_common.yaml#/components/responses/SubscriptionIdRequired400"
         "401":
-          $ref: "../common/CAMARA_common.yaml#/components/responses/Generic401"
+          $ref: "../common/CAMARA_common.yaml#/components/responses/Unauthenticated401"
         "403":
-          $ref: "../common/CAMARA_common.yaml#/components/responses/Generic403"
+          $ref: "../common/CAMARA_common.yaml#/components/responses/PermissionDenied403"
         "404":
-          $ref: "../common/CAMARA_common.yaml#/components/responses/Generic404"
+          $ref: "../common/CAMARA_common.yaml#/components/responses/NotFound404"
 
     delete:
       tags:
@@ -377,11 +381,11 @@ paths:
         "400":
           $ref: "../common/CAMARA_event_common.yaml#/components/responses/SubscriptionIdRequired400"
         "401":
-          $ref: "../common/CAMARA_common.yaml#/components/responses/Generic401"
+          $ref: "../common/CAMARA_common.yaml#/components/responses/Unauthenticated401"
         "403":
-          $ref: "../common/CAMARA_common.yaml#/components/responses/Generic403"
+          $ref: "../common/CAMARA_common.yaml#/components/responses/PermissionDenied403"
         "404":
-          $ref: "../common/CAMARA_common.yaml#/components/responses/Generic404"
+          $ref: "../common/CAMARA_common.yaml#/components/responses/NotFound404"
 
 components:
   securitySchemes:
@@ -389,6 +393,32 @@ components:
       $ref: "../common/CAMARA_common.yaml#/components/securitySchemes/openId"
     notificationsBearerAuth:
       $ref: "../common/CAMARA_event_common.yaml#/components/securitySchemes/notificationsBearerAuth"
+
+  responses:
+    TooManyRequestsOrQuotaExceeded429:
+      description: Too Many Requests or Quota Exceeded
+      headers:
+        x-correlator:
+          $ref: "../common/CAMARA_common.yaml#/components/headers/x-correlator"
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "../common/CAMARA_common.yaml#/components/schemas/ErrorInfo"
+              - type: object
+                properties:
+                  status:
+                    enum:
+                      - 429
+                  code:
+                    enum:
+                      - TOO_MANY_REQUESTS
+                      - QUOTA_EXCEEDED
+          examples:
+            GENERIC_429_TOO_MANY_REQUESTS:
+              $ref: "../common/CAMARA_common.yaml#/components/examples/GENERIC_429_TOO_MANY_REQUESTS"
+            GENERIC_429_QUOTA_EXCEEDED:
+              $ref: "../common/CAMARA_common.yaml#/components/examples/GENERIC_429_QUOTA_EXCEEDED"
 
   parameters:
     SubscriptionId:
@@ -412,6 +442,8 @@ components:
       allOf:
         - $ref: "../common/CAMARA_event_common.yaml#/components/schemas/ConfigBase"
         - type: object
+          required:
+            - subscriptionDetail
           properties:
             subscriptionDetail:
               $ref: "#/components/schemas/CreateSubscriptionDetail"
@@ -476,7 +508,7 @@ components:
         protocol:
           $ref: "../common/CAMARA_event_common.yaml#/components/schemas/Protocol"
         sink:
-          $ref: "#/components/schemas/Sink"
+          $ref: "../common/CAMARA_event_common.yaml#/components/schemas/Sink"
         sinkCredential:
           $ref: "../common/CAMARA_event_common.yaml#/components/schemas/SinkCredential"
         types:
@@ -550,7 +582,7 @@ components:
         protocol:
           $ref: "../common/CAMARA_event_common.yaml#/components/schemas/Protocol"
         sink:
-          $ref: "#/components/schemas/Sink"
+          $ref: "../common/CAMARA_event_common.yaml#/components/schemas/Sink"
         sinkCredential:
           $ref: "../common/CAMARA_event_common.yaml#/components/schemas/SinkCredential"
         types:
@@ -715,14 +747,6 @@ components:
                     device:
                       $ref: "../common/CAMARA_common.yaml#/components/schemas/DeviceResponse"
                 - $ref: "../common/CAMARA_event_common.yaml#/components/schemas/SubscriptionEnded"
-
-    Sink:
-      description: The address to which events shall be delivered using the selected protocol.
-      type: string
-      format: uri
-      maxLength: 2048
-      pattern: ^https:\/\/.+$
-      example: "https://endpoint.example.com/sink"
 
     HTTPSubscriptionRequest:
       description: Subscription request for HTTP-based event delivery.
@@ -952,4 +976,4 @@ components:
           page: 1
           perPage: 1
           totalCount: 0
-          totalPages: 1
+          totalPages: 0

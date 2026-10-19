@@ -2,79 +2,81 @@ openapi: 3.0.3
 info:
   title: Device Reachability Status Subscriptions
   description: |
-    This API provides the API consumer with the ability to subscribe to Reachability status events.
+    This API provides the API consumer with the ability to subscribe to reachability status events.
 
     # Introduction
 
-    ## Reachability Status
-    API consumer is able to be notified whether the reachability status of a certain user device has changed to either data- or sms-usage.
-    This capability is provided via a subscription  request - in this case the reachability situation is part of the event notification, which is sent back to the event subscriber when reachability situation has changed.
+    The API consumer is able to be notified whenever the reachability status of a certain user device has changed for either data or SMS connectivity. This capability is requested via a subscription request - in this case the reachability status is not contained in the API response, but instead an event notification is sent back to the event subscriber whenever the reachability situation changes.
 
     # Relevant terms and definitions
 
-    * **Device**: A device refers to any physical entity that can connect to a network and participate in network communication.
+    * **Reachable**:\
+       A device is considered to be reachable if it has mobile data connectivity, or can receive SMS messages.
 
-        At least one identifier for the device out of four options must be provided: IPv4 address, IPv6 address, Phone number, or Network Access Identifier assigned by the mobile network operator for the device. Where more than one device identifier is provided, only one identifier will be selected by the implementation and this choice indicated to the API consumer in the session creation response.
+    * **Connectivity:**\
+      Indicates the connectivity types (mobile data, SMS, or both) by which the device is reachable from the network. A device is considered to be disconnected if it cannot be reached using either mobile data or SMS connectivity.
 
-        Note: Network Access Identifier is defined for future use and will not be supported with this version of the API.
+    * **Device**:\
+      A device refers to any physical hardware that can connect to a mobile network and participate in network communication.
+
+      At least one identifier for the device out of four options must be provided: IPv4 address, IPv6 address, phone number, or network access identifier assigned by the mobile network operator for the device. Where more than one device identifier is provided, only one identifier will be selected by the implementation and this choice indicated to the API consumer in the session creation response.
+
+      Note: Network Access Identifier is defined for future use and will not be supported with this version of the API.
 
     # API Functionality
 
     The API exposes following capability:
 
-    ## Device reachability status subscription
+    ## Device Reachability Status Subscription
 
-    These endpoints allow to manage event subscription on reachability device status event.
-    The CAMARA subscription model is detailed in the CAMARA API design guideline document and follows CloudEvents specification.
+    These endpoints allow the API consumer to manage event subscriptions for device reachability status events.
+    The CAMARA subscription model is described in the `CAMARA API Event Subscription and Notification Guide` and uses notifications that follow the CloudEvents specification.
 
-    When subscribing, it is mandatory to provide the event `types` you are subscribing to, as multiple subscription-types are managed by this API.
+    When creating a subscription, it is mandatory to provide the event types you are subscribing to, as multiple subscription-types are managed by this API.
 
-    Following event ``types`` are managed for this API:
-      - ``org.camaraproject.device-reachability-status-subscriptions.v0.reachability-data``: Event triggered when the device is connected to the network for Data usage (regardless of the SMS reachability).
+    The following event types may be requested for this API:
+      - `org.camaraproject.device-reachability-status-subscriptions.v0.reachability-data` is sent when the device becomes connected to the network for data usage (regardless of the SMS reachability status)
+      - `org.camaraproject.device-reachability-status-subscriptions.v0.reachability-sms` is sent when the device becomes connected to the network for SMS usage (regardless of the data reachability status)
+      - `org.camaraproject.device-reachability-status-subscriptions.v0.reachability-disconnected` is sent when the device becomes disconnected from the network
 
-      - ``org.camaraproject.device-reachability-status-subscriptions.v0.reachability-sms``: Event triggered when the device is connected to the network only for SMS usage
-
-      - ``org.camaraproject.device-reachability-status-subscriptions.v0.reachability-disconnected``: Event triggered when the device is not connected.
-
-    Note: Additionally, the following events could be sent, which do not require a dedicated subscription:
+    Note: Additionally, the following events may be sent, which do not require a dedicated subscription:
       - `org.camaraproject.device-reachability-status-subscriptions.v0.subscription-started` is sent when the subscription starts.
       - `org.camaraproject.device-reachability-status-subscriptions.v0.subscription-updated` is sent when the subscription is updated.
       - `org.camaraproject.device-reachability-status-subscriptions.v0.subscription-ended` is sent when the subscription ends.
 
-    It is used in following cases:
+    The `subscription-ended` event may be used in following cases:
       - the subscription expire time (optionally set by the requester) has been reached
       - the maximum number of subscription events (optionally set by the requester) has been reached
-      - the subscription was deleted by the requester
-      - the Access Token `sinkCredential` (optionally set by the requester) expiration time has been reached
-      - the API server has to stop sending notification prematurely
+      - the subscription was deleted by the API consumer
+      - the expiry time for the access token `sinkCredential` (optionally set by the API consumer) time has been reached
+      - the API provider has to stop sending notifications early
 
-    **Note on combined usage of ``initialEvent`` and ``subscriptionMaxEvents``**:
+    **Note on combined usage of `initialEvent` and `subscriptionMaxEvents`**:
 
-    If an event is triggered following ``initialEvent`` set to true,
-    this event will be counted towards ``subscriptionMaxEvents`` (if provided).
+    If an initial event is triggered because `initialEvent` set to true, that event will count towards `subscriptionMaxEvents` if that has been specified.
 
-    **Clarification on ``initialEvent`` & ``event-type`` behaviour:**
+    **Clarification on `initialEvent` setting and event type behaviour:**
 
     Following table illustrate behaviour regarding event triggering depending on **initial** reachability state of the device:
 
-    | subscribed event-type | device reachability status at subscription time | event sent if ``initialEvent`` set to true | Explanation |
-    | ----------------------| ------------- | --------------- | ---------------|
-    | reachability-data  | Device can use data |   Yes | The device is reachable for data, so the event is triggered. |
-    | reachability-data  | Device is disconnected or SMS-only | No | The device cannot use data, so no event is sent. |
-    | reachability-sms  | Device can use data | No | The device can use data, but for thids event is only for SMS. |
-    | reachability-sms  |  Device is SMS-only | Yes | The device supports SMS, so the event is triggered. |
-    | reachability-sms  | Device is disconnected | No | The device cannot send SMS, so no event is send. |
-    | reachability-disconnected  | Device can use data or SMS usage | No | The device is reachable, so no "disconnected" event is sent. |
-    | reachability-disconnected  | Device is disconnected | Yes | The device is disconnected, so the event is triggered. |
+    | subscribed event-type      | device reachability status at subscription time  | event sent if `initialEvent` is `true` | Explanation                                   |
+    | -------------------------- | ------------------------------------------------ | -------------------------------------- | --------------------------------------------- |
+    | reachability-data          | Device is connected for data and possibly SMS    | Yes                                    | The device is reachable using data            |
+    | reachability-data          | Device is connected for SMS only                 | No                                     | The device is not reachable using data        |
+    | reachability-data          | Device is disconnected from the network          | No                                     | The device is not reachable using data        |
+    | reachability-sms           | Device is connected for SMS but not data         | Yes                                    | The device is reachable only using SMS        |
+    | reachability-sms           | Device is connected for data only                | No                                     | The device is not reachable using SMS         |
+    | reachability-sms           | Device is disconnected from the network          | No                                     | The device is not reachable using SMS         |
+    | reachability-disconnected  | Device is disconnected from the network          | Yes                                    | The device is not reachable at all            |
+    | reachability-disconnected  | Device is connected for data and/or SMS          | No                                     | The device is reachable using data and/or SMS |
 
     ### Notifications callback
 
-    This endpoint describes the event notification received on subscription listener side when the event occurred.
-    As for subscription, detailed description of the event notification is provided in the CAMARA API design guideline document.
+    This endpoint describes the format of the event notification received by the API consumer when an event is sent.
+    A detailed description of the event subscription and notification mechanism is provided in the `CAMARA API Event Subscription and Notification Guide`.
 
-    _**WARNING**: This callback endpoint must be exposed on the consumer side as `POST /{$request.body#/sink}`.
-      Developers may provide a callback URL on which notifications regarding reachability-status can be received from the service provider.
-      If an event occurs the application will send events to the provided webhook - `sink`._
+    _**WARNING**:\
+      API consumers must provide a callback URL on which reachability status notifications from the API provider can be received. This callback endpoint must be exposed by API consumer as `POST /{$request.body#/sink}`. When an event occurs, the API provider will send the event to the URL specified by `sink`._
 
     <!-- CAMARA:MANDATORY:authorization-and-authentication:BEGIN -->
 
@@ -209,7 +211,7 @@ paths:
                   description: Successful notification
                   headers:
                     x-correlator:
-                      $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+                      $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
                 '400':
                   $ref: '#/paths/~1subscriptions/get/responses/400'
                 '401':
@@ -220,12 +222,12 @@ paths:
                   description: Gone
                   headers:
                     x-correlator:
-                      $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+                      $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
                   content:
                     application/json:
                       schema:
                         allOf:
-                          - $ref: '#/paths/~1subscriptions/get/responses/400/content/application~1json/schema/allOf/0'
+                          - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                           - type: object
                             properties:
                               status:
@@ -242,7 +244,7 @@ paths:
                             code: GONE
                             message: Access to the target resource is no longer available.
                 '429':
-                  $ref: '#/paths/~1subscriptions/post/responses/429'
+                  $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429'
               security:
                 - {}
                 - notificationsBearerAuth: []
@@ -251,7 +253,7 @@ paths:
           description: Created
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
           content:
             application/json:
               schema:
@@ -265,7 +267,7 @@ paths:
           description: Request accepted to be processed. It applies for async creation process.
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
           content:
             application/json:
               schema:
@@ -274,12 +276,12 @@ paths:
           description: Problem with the client request
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/paths/~1subscriptions/get/responses/400/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -295,11 +297,7 @@ paths:
                           - INVALID_SINK
               examples:
                 GENERIC_400_INVALID_ARGUMENT:
-                  description: Invalid Argument. Generic Syntax Exception
-                  value:
-                    status: 400
-                    code: INVALID_ARGUMENT
-                    message: Client specified an invalid argument, request body or query param.
+                  $ref: '#/paths/~1subscriptions/get/responses/400/content/application~1json/examples/GENERIC_400_INVALID_ARGUMENT'
                 GENERIC_400_OUT_OF_RANGE:
                   description: Out of Range. Specific Syntax Exception used when a given field has a pre-defined range or a invalid filter criteria combination is requested
                   value:
@@ -336,12 +334,12 @@ paths:
           description: Client does not have sufficient permission
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/paths/~1subscriptions/get/responses/400/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -353,27 +351,48 @@ paths:
                           - SUBSCRIPTION_MISMATCH
               examples:
                 GENERIC_403_PERMISSION_DENIED:
-                  description: Permission denied. OAuth2 token access does not have the required scope or when the user fails operational security
-                  value:
-                    status: 403
-                    code: PERMISSION_DENIED
-                    message: Client does not have sufficient permissions to perform this action.
+                  $ref: '#/paths/~1subscriptions/get/responses/403/content/application~1json/examples/GENERIC_403_PERMISSION_DENIED'
                 GENERIC_403_SUBSCRIPTION_MISMATCH:
                   description: Inconsistent access token for requested subscription
                   value:
                     status: 403
                     code: SUBSCRIPTION_MISMATCH
                     message: Inconsistent access token for requested events subscription
-        '409':
-          description: Conflict
+        '404':
+          description: Not found
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/paths/~1subscriptions/get/responses/400/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
+                  - type: object
+                    properties:
+                      status:
+                        enum:
+                          - 404
+                      code:
+                        enum:
+                          - IDENTIFIER_NOT_FOUND
+              examples:
+                GENERIC_404_IDENTIFIER_NOT_FOUND:
+                  description: The identifier cannot be matched to a device or phone number
+                  value:
+                    status: 404
+                    code: IDENTIFIER_NOT_FOUND
+                    message: The identifier is not found.
+        '409':
+          description: Conflict with an existing subscription
+          headers:
+            x-correlator:
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -383,7 +402,6 @@ paths:
                         enum:
                           - ABORTED
                           - ALREADY_EXISTS
-                          - INCOMPATIBLE_STATE
               examples:
                 GENERIC_409_ABORTED:
                   description: The resource is undergoing modification by another process
@@ -397,23 +415,16 @@ paths:
                     status: 409
                     code: ALREADY_EXISTS
                     message: The resource that a client tried to create already exists.
-                GENERIC_409_INCOMPATIBLE_STATE:
-                  description: |
-                    The status of the referenced resource is not compatible.
-                  value:
-                    status: 409
-                    code: INCOMPATIBLE_STATE
-                    message: Resource must be in AVAILABLE state to extend. Current state is UNAVAILABLE.
         '422':
-          description: Unprocessable Entity
+          description: Unprocessable Content
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/paths/~1subscriptions/get/responses/400/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -435,20 +446,20 @@ paths:
                     status: 422
                     code: SERVICE_NOT_APPLICABLE
                     message: The service is not available for the provided identifier.
-                GENERIC_422_MISSING_IDENTIFIER:
-                  description: An identifier is not included in the request and the device or phone number identification cannot be derived from the 3-legged access token
+                GENERIC_422_MISSING_IDENTIFIER_DEVICE:
+                  description: The device identifier is not included in the request and the device cannot be derived from the access token
                   value:
                     status: 422
                     code: MISSING_IDENTIFIER
                     message: The device cannot be identified.
-                GENERIC_422_UNSUPPORTED_IDENTIFIER:
-                  description: None of the provided identifiers is supported by the implementation
+                GENERIC_422_UNSUPPORTED_IDENTIFIER_DEVICE:
+                  description: None of the provided device identifiers is supported by the implementation
                   value:
                     status: 422
                     code: UNSUPPORTED_IDENTIFIER
                     message: The identifier provided is not supported.
-                GENERIC_422_UNNECESSARY_IDENTIFIER:
-                  description: An explicit identifier is provided when a device or phone number has already been identified from the access token
+                GENERIC_422_UNNECESSARY_IDENTIFIER_DEVICE:
+                  description: An explicit device identifier is provided when the device has already been identified from the access token
                   value:
                     status: 422
                     code: UNNECESSARY_IDENTIFIER
@@ -472,37 +483,7 @@ paths:
                     code: PRIVATE_KEY_JWT_NOT_CONFIGURED
                     message: No JWK Set configured for PRIVATE_KEY_JWT authentication.
         '429':
-          description: Too Many Requests
-          headers:
-            x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/paths/~1subscriptions/get/responses/400/content/application~1json/schema/allOf/0'
-                  - type: object
-                    properties:
-                      status:
-                        enum:
-                          - 429
-                      code:
-                        enum:
-                          - QUOTA_EXCEEDED
-                          - TOO_MANY_REQUESTS
-              examples:
-                GENERIC_429_QUOTA_EXCEEDED:
-                  description: Request is rejected due to exceeding a business quota limit
-                  value:
-                    status: 429
-                    code: QUOTA_EXCEEDED
-                    message: Out of resource quota.
-                GENERIC_429_TOO_MANY_REQUESTS:
-                  description: Access to the API has been temporarily blocked due to rate or spike arrest limits being reached
-                  value:
-                    status: 429
-                    code: TOO_MANY_REQUESTS
-                    message: Rate limit reached.
+          $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429'
     get:
       tags:
         - Device Reachability Status Subscription
@@ -553,9 +534,7 @@ paths:
           description: List of event subscription details
           headers:
             x-correlator:
-              description: Correlation id for the different services
-              schema:
-                $ref: '#/paths/~1subscriptions/get/parameters/0/schema'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
             X-Total-Count:
               description: Total number of items. Mirrors `pagination.totalCount` in the response body.
               required: false
@@ -595,32 +574,12 @@ paths:
           description: Bad Request
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
           content:
             application/json:
               schema:
                 allOf:
-                  - type: object
-                    description: A structured error response providing details about a failed request, including the HTTP status code, an error code, and a human-readable message
-                    required:
-                      - status
-                      - code
-                      - message
-                    properties:
-                      status:
-                        type: integer
-                        format: int32
-                        minimum: 100
-                        maximum: 599
-                        description: HTTP response status code
-                      code:
-                        type: string
-                        maxLength: 96
-                        description: A human-readable code to describe the error
-                      message:
-                        type: string
-                        maxLength: 512
-                        description: A human-readable description of what the event represents
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -629,7 +588,6 @@ paths:
                       code:
                         enum:
                           - INVALID_ARGUMENT
-                          - OUT_OF_RANGE
               examples:
                 GENERIC_400_INVALID_ARGUMENT:
                   description: Invalid Argument. Generic Syntax Exception
@@ -637,22 +595,16 @@ paths:
                     status: 400
                     code: INVALID_ARGUMENT
                     message: Client specified an invalid argument, request body or query param.
-                GENERIC_400_OUT_OF_RANGE:
-                  description: Out of Range. Specific Syntax Exception used when a given field has a pre-defined range or a invalid filter criteria combination is requested
-                  value:
-                    status: 400
-                    code: OUT_OF_RANGE
-                    message: Client specified an invalid range.
         '401':
           description: Unauthorized
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/paths/~1subscriptions/get/responses/400/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -672,12 +624,12 @@ paths:
           description: Forbidden
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/paths/~1subscriptions/get/responses/400/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -711,7 +663,7 @@ paths:
           description: OK
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
           content:
             application/json:
               schema:
@@ -729,12 +681,12 @@ paths:
           description: Problem with the client request
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/paths/~1subscriptions/get/responses/400/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -745,7 +697,7 @@ paths:
                           - INVALID_ARGUMENT
               examples:
                 GENERIC_400_INVALID_ARGUMENT:
-                  $ref: '#/paths/~1subscriptions/post/responses/400/content/application~1json/examples/GENERIC_400_INVALID_ARGUMENT'
+                  $ref: '#/paths/~1subscriptions/get/responses/400/content/application~1json/examples/GENERIC_400_INVALID_ARGUMENT'
                 GENERIC_400_SUBSCRIPTION_ID_REQUIRED:
                   description: subscription id is required
                   value:
@@ -760,12 +712,12 @@ paths:
           description: Not found
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/paths/~1subscriptions/get/responses/400/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -774,7 +726,6 @@ paths:
                       code:
                         enum:
                           - NOT_FOUND
-                          - IDENTIFIER_NOT_FOUND
               examples:
                 GENERIC_404_NOT_FOUND:
                   description: Resource is not found
@@ -782,12 +733,6 @@ paths:
                     status: 404
                     code: NOT_FOUND
                     message: The specified resource is not found.
-                GENERIC_404_IDENTIFIER_NOT_FOUND:
-                  description: Some identifier cannot be matched to a device
-                  value:
-                    status: 404
-                    code: IDENTIFIER_NOT_FOUND
-                    message: Device identifier not found.
     delete:
       tags:
         - Device Reachability Status Subscription
@@ -805,7 +750,7 @@ paths:
           description: Request accepted to be processed. It applies for async deletion process.
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
           content:
             application/json:
               schema:
@@ -814,7 +759,7 @@ paths:
           description: Event subscription deleted
           headers:
             x-correlator:
-              $ref: '#/paths/~1subscriptions/get/responses/200/headers/x-correlator'
+              $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/headers/x-correlator'
         '400':
           $ref: '#/paths/~1subscriptions~1%7BsubscriptionId%7D/get/responses/400'
         '401':
@@ -836,6 +781,61 @@ components:
       description: |
         Bearer token for notification delivery. Token format is determined
         by `sinkCredential.credentialType` in the subscription request.
+  responses:
+    TooManyRequestsOrQuotaExceeded429:
+      description: Too Many Requests or Quota Exceeded
+      headers:
+        x-correlator:
+          description: Correlation id for the different services
+          schema:
+            $ref: '#/paths/~1subscriptions/get/parameters/0/schema'
+      content:
+        application/json:
+          schema:
+            allOf:
+              - type: object
+                description: A structured error response providing details about a failed request, including the HTTP status code, an error code, and a human-readable message
+                required:
+                  - status
+                  - code
+                  - message
+                properties:
+                  status:
+                    type: integer
+                    format: int32
+                    minimum: 100
+                    maximum: 599
+                    description: HTTP response status code
+                  code:
+                    type: string
+                    maxLength: 96
+                    description: A human-readable code to describe the error
+                  message:
+                    type: string
+                    maxLength: 512
+                    description: A human-readable description of what the event represents
+              - type: object
+                properties:
+                  status:
+                    enum:
+                      - 429
+                  code:
+                    enum:
+                      - TOO_MANY_REQUESTS
+                      - QUOTA_EXCEEDED
+          examples:
+            GENERIC_429_TOO_MANY_REQUESTS:
+              description: Access to the API has been temporarily blocked due to rate or spike arrest limits being reached
+              value:
+                status: 429
+                code: TOO_MANY_REQUESTS
+                message: Rate limit reached.
+            GENERIC_429_QUOTA_EXCEEDED:
+              description: Request is rejected due to exceeding a business quota limit
+              value:
+                status: 429
+                code: QUOTA_EXCEEDED
+                message: Out of resource quota.
   parameters:
     SubscriptionId:
       name: subscriptionId
@@ -948,6 +948,8 @@ components:
               maximum: 1000000
               example: 5
         - type: object
+          required:
+            - subscriptionDetail
           properties:
             subscriptionDetail:
               $ref: '#/components/schemas/CreateSubscriptionDetail'
@@ -1066,7 +1068,12 @@ components:
           description: Identifier of a delivery protocol. Only HTTP is allowed for now
           example: HTTP
         sink:
-          $ref: '#/components/schemas/Sink'
+          description: The address to which events shall be delivered using the selected protocol.
+          type: string
+          format: uri
+          maxLength: 2048
+          pattern: ^https:\/\/.+$
+          example: https://endpoint.example.com/sink
         sinkCredential:
           description: A sink credential provides authentication or authorization information necessary to enable delivery of events to a target.
           type: object
@@ -1153,7 +1160,7 @@ components:
         protocol:
           $ref: '#/components/schemas/Subscription/properties/protocol'
         sink:
-          $ref: '#/components/schemas/Sink'
+          $ref: '#/components/schemas/Subscription/properties/sink'
         sinkCredential:
           $ref: '#/components/schemas/Subscription/properties/sinkCredential'
         types:
@@ -1388,13 +1395,6 @@ components:
                       type: string
                       maxLength: 512
                       description: Description of subscription termination
-    Sink:
-      description: The address to which events shall be delivered using the selected protocol.
-      type: string
-      format: uri
-      maxLength: 2048
-      pattern: ^https:\/\/.+$
-      example: https://endpoint.example.com/sink
     HTTPSubscriptionRequest:
       description: Subscription request for HTTP-based event delivery.
       allOf:
@@ -1625,4 +1625,4 @@ components:
           page: 1
           perPage: 1
           totalCount: 0
-          totalPages: 1
+          totalPages: 0
