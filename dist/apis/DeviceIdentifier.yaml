@@ -99,9 +99,6 @@ info:
     `400 INVALID_ARGUMENT`:
     - The API request is not compliant with this OAS definition
 
-    `400 OUT_OF_RANGE`:
-    - A parameter value in the API request is outwith the range documented in this OAS definition for that parameter
-
     `404 IDENTIFIER_NOT_FOUND`:
     - The device identified by the `device` object in the request is not managed by the API provider
 
@@ -237,7 +234,7 @@ paths:
         '422':
           $ref: '#/paths/~1retrieve-type/post/responses/422'
         '429':
-          $ref: '#/paths/~1retrieve-type/post/responses/429'
+          $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429'
   /retrieve-type:
     post:
       summary: Get details about the type of device being used by a given mobile subscriber
@@ -286,27 +283,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - type: object
-                    description: A structured error response providing details about a failed request, including the HTTP status code, an error code, and a human-readable message
-                    required:
-                      - status
-                      - code
-                      - message
-                    properties:
-                      status:
-                        type: integer
-                        format: int32
-                        minimum: 100
-                        maximum: 599
-                        description: HTTP response status code
-                      code:
-                        type: string
-                        maxLength: 96
-                        description: A human-readable code to describe the error
-                      message:
-                        type: string
-                        maxLength: 512
-                        description: A human-readable description of what the event represents
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -315,7 +292,6 @@ paths:
                       code:
                         enum:
                           - INVALID_ARGUMENT
-                          - OUT_OF_RANGE
               examples:
                 GENERIC_400_INVALID_ARGUMENT:
                   description: Invalid Argument. Generic Syntax Exception
@@ -323,12 +299,6 @@ paths:
                     status: 400
                     code: INVALID_ARGUMENT
                     message: Client specified an invalid argument, request body or query param.
-                GENERIC_400_OUT_OF_RANGE:
-                  description: Out of Range. Specific Syntax Exception used when a given field has a pre-defined range or a invalid filter criteria combination is requested
-                  value:
-                    status: 400
-                    code: OUT_OF_RANGE
-                    message: Client specified an invalid range.
         '401':
           description: Unauthorized
           headers:
@@ -338,7 +308,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/paths/~1retrieve-type/post/responses/400/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -363,7 +333,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/paths/~1retrieve-type/post/responses/400/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -388,7 +358,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/paths/~1retrieve-type/post/responses/400/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -413,7 +383,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/paths/~1retrieve-type/post/responses/400/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -451,30 +421,7 @@ paths:
                     code: UNNECESSARY_IDENTIFIER
                     message: The device is already identified by the access token.
         '429':
-          description: Too Many Requests
-          headers:
-            x-correlator:
-              $ref: '#/components/responses/200RetrieveType/headers/x-correlator'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/paths/~1retrieve-type/post/responses/400/content/application~1json/schema/allOf/0'
-                  - type: object
-                    properties:
-                      status:
-                        enum:
-                          - 429
-                      code:
-                        enum:
-                          - TOO_MANY_REQUESTS
-              examples:
-                GENERIC_429_TOO_MANY_REQUESTS:
-                  description: Access to the API has been temporarily blocked due to rate or spike arrest limits being reached
-                  value:
-                    status: 429
-                    code: TOO_MANY_REQUESTS
-                    message: Rate limit reached.
+          $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429'
   /retrieve-ppid:
     post:
       summary: Get a pseudonymous identifier for device being used by a given mobile subscriber
@@ -517,7 +464,7 @@ paths:
         '422':
           $ref: '#/paths/~1retrieve-type/post/responses/422'
         '429':
-          $ref: '#/paths/~1retrieve-type/post/responses/429'
+          $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429'
   /match-identifier:
     post:
       summary: Check if a provided device identifier matches the one associated with the subscription
@@ -560,7 +507,7 @@ paths:
         '422':
           $ref: '#/paths/~1retrieve-type/post/responses/422'
         '429':
-          $ref: '#/paths/~1retrieve-type/post/responses/429'
+          $ref: '#/components/responses/TooManyRequestsOrQuotaExceeded429'
 components:
   securitySchemes:
     openId:
@@ -568,6 +515,58 @@ components:
       openIdConnectUrl: https://example.com/.well-known/openid-configuration
       description: OpenID Connect authentication via discovery metadata.
   responses:
+    TooManyRequestsOrQuotaExceeded429:
+      description: Too Many Requests or Quota Exceeded
+      headers:
+        x-correlator:
+          $ref: '#/components/responses/200RetrieveType/headers/x-correlator'
+      content:
+        application/json:
+          schema:
+            allOf:
+              - type: object
+                description: A structured error response providing details about a failed request, including the HTTP status code, an error code, and a human-readable message
+                required:
+                  - status
+                  - code
+                  - message
+                properties:
+                  status:
+                    type: integer
+                    format: int32
+                    minimum: 100
+                    maximum: 599
+                    description: HTTP response status code
+                  code:
+                    type: string
+                    maxLength: 96
+                    description: A human-readable code to describe the error
+                  message:
+                    type: string
+                    maxLength: 512
+                    description: A human-readable description of what the event represents
+              - type: object
+                properties:
+                  status:
+                    enum:
+                      - 429
+                  code:
+                    enum:
+                      - TOO_MANY_REQUESTS
+                      - QUOTA_EXCEEDED
+          examples:
+            GENERIC_429_TOO_MANY_REQUESTS:
+              description: Access to the API has been temporarily blocked due to rate or spike arrest limits being reached
+              value:
+                status: 429
+                code: TOO_MANY_REQUESTS
+                message: Rate limit reached.
+            GENERIC_429_QUOTA_EXCEEDED:
+              description: Request is rejected due to exceeding a business quota limit
+              value:
+                status: 429
+                code: QUOTA_EXCEEDED
+                message: Out of resource quota.
     200RetrieveIdentifier:
       description: A physical device identifier has been found for the specified mobile device subscription
       headers:

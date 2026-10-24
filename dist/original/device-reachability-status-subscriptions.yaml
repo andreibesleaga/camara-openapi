@@ -64,7 +64,7 @@ info:
     | reachability-data          | Device is connected for data and possibly SMS    | Yes                                    | The device is reachable using data            |
     | reachability-data          | Device is connected for SMS only                 | No                                     | The device is not reachable using data        |
     | reachability-data          | Device is disconnected from the network          | No                                     | The device is not reachable using data        |
-    | reachability-sms           | Device is connected for SMS but not data         | Yes                                    | The device is reachable only using SMS        |
+    | reachability-sms           | Device is connected for SMS and possibly data    | Yes                                    | The device is reachable using SMS        |
     | reachability-sms           | Device is connected for data only                | No                                     | The device is not reachable using SMS         |
     | reachability-sms           | Device is disconnected from the network          | No                                     | The device is not reachable using SMS         |
     | reachability-disconnected  | Device is disconnected from the network          | Yes                                    | The device is not reachable at all            |
@@ -456,8 +456,8 @@ components:
     ApiEventType:
       type: string
       description: |
-        reachability-data         - Event triggered when the device is connected to the network for Data usage (regardless of the SMS reachability).
-        reachability-sms          - Event triggered when the device is connected to the network only for SMS usage.
+        reachability-data         - Event triggered when the device is connected to the network for data usage (regardless of the SMS reachability).
+        reachability-sms          - Event triggered when the device is connected to the network for SMS usage (regardless of the data reachability).
         reachability-disconnected - Event triggered when the device is not connected.
       enum:
         - org.camaraproject.device-reachability-status-subscriptions.v0.reachability-data

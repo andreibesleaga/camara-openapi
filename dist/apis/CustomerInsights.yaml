@@ -77,7 +77,15 @@ info:
 
     # Additional Information on Error scenarios
 
-    This section provides valuable information about the scope of some exceptions in order to provide support for the API implementation.
+    This section provides important information about the scope of certain exceptions to support the API implementation.
+
+    `404 - IDENTIFIER_NOT_FOUND`
+
+    This error code is returned when the provided `phoneNumber` cannot be found.
+
+    `404 - NOT_FOUND`
+
+    This error code is returned when `idDocument` is supported by the API Provider and the provided `idDocument` cannot be found.
 
     `422 - SERVICE_NOT_APPLICABLE`
 
@@ -85,7 +93,7 @@ info:
       - The API is invoked for a subscription, identified via access token or phoneNumber, that is not supported or not commercially allowed by the API Provider.
       - The API is invoked for a valid subscription, identified via access token or phoneNumber, but the service cannot be provided for that specific subscription. For instance, this can be the case when the subscription has not enough historical data to provide a reliable Scoring result.
       - The API is invoked without `idDocument` and the field is required by the API Provider.
-      - The API is invoked with a combination of `phoneNumber` and `idDocument`, considering `idDocument` is required by the API Provider, that does not point to the same subscription (i.e. the `phoneNumber` and `idDocument` provided are not related).
+      - The API is invoked with a combination of `phoneNumber` and `idDocument`, considering `idDocument` is supported by the API Provider, that does not point to the same subscription (i.e. the `phoneNumber` and `idDocument` provided are not related).
 
     <!-- CAMARA:MANDATORY:additional-error-responses:BEGIN -->
 
@@ -209,7 +217,7 @@ paths:
           description: Scoring result.
           headers:
             x-correlator:
-              $ref: '#/components/responses/NotFound404/headers/x-correlator'
+              $ref: '#/components/responses/UnprocessableContent422/headers/x-correlator'
           content:
             application/json:
               schema:
@@ -231,12 +239,12 @@ paths:
           description: Bad Request
           headers:
             x-correlator:
-              $ref: '#/components/responses/NotFound404/headers/x-correlator'
+              $ref: '#/components/responses/UnprocessableContent422/headers/x-correlator'
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/responses/NotFound404/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/UnprocessableContent422/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -256,12 +264,12 @@ paths:
           description: Unauthorized
           headers:
             x-correlator:
-              $ref: '#/components/responses/NotFound404/headers/x-correlator'
+              $ref: '#/components/responses/UnprocessableContent422/headers/x-correlator'
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/responses/NotFound404/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/UnprocessableContent422/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -281,12 +289,12 @@ paths:
           description: Forbidden
           headers:
             x-correlator:
-              $ref: '#/components/responses/NotFound404/headers/x-correlator'
+              $ref: '#/components/responses/UnprocessableContent422/headers/x-correlator'
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/responses/NotFound404/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/UnprocessableContent422/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -303,19 +311,19 @@ paths:
                     code: PERMISSION_DENIED
                     message: Client does not have sufficient permissions to perform this action.
         '404':
-          $ref: '#/components/responses/NotFound404'
+          $ref: '#/components/responses/RetrieveScoringNotFound404'
         '422':
           $ref: '#/components/responses/UnprocessableContent422'
         '429':
           description: Too Many Requests
           headers:
             x-correlator:
-              $ref: '#/components/responses/NotFound404/headers/x-correlator'
+              $ref: '#/components/responses/UnprocessableContent422/headers/x-correlator'
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/responses/NotFound404/content/application~1json/schema/allOf/0'
+                  - $ref: '#/components/responses/UnprocessableContent422/content/application~1json/schema/allOf/0'
                   - type: object
                     properties:
                       status:
@@ -418,8 +426,48 @@ components:
           minimum: 0
           maximum: 19
   responses:
-    NotFound404:
+    RetrieveScoringNotFound404:
       description: Not found
+      headers:
+        x-correlator:
+          $ref: '#/components/responses/UnprocessableContent422/headers/x-correlator'
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/responses/UnprocessableContent422/content/application~1json/schema/allOf/0'
+              - type: object
+                properties:
+                  status:
+                    enum:
+                      - 404
+                  code:
+                    enum:
+                      - NOT_FOUND
+                      - IDENTIFIER_NOT_FOUND
+          examples:
+            GENERIC_404_NOT_FOUND:
+              description: Resource is not found
+              value:
+                status: 404
+                code: NOT_FOUND
+                message: The specified resource is not found.
+            GENERIC_404_IDENTIFIER_NOT_FOUND:
+              description: The identifier cannot be matched to a device or phone number
+              value:
+                status: 404
+                code: IDENTIFIER_NOT_FOUND
+                message: The identifier is not found.
+    UnprocessableContent422:
+      description: |-
+        Unprocessable Content
+
+        In addition to regular scenario of Unprocessable Content, another scenarios may exist.
+        - Service not applicable for the provided identifier ("code": "SERVICE_NOT_APPLICABLE","message": "The service is not available for the provided identifier.")
+        - The phone number is not included in the request and cannot be derived from the access token ("code": "MISSING_IDENTIFIER","message": "The phone number cannot be identified.")
+        - An explicit phone number is provided when the phone number has already been identified from the access token ("code": "UNNECESSARY_IDENTIFIER","message": "The phone number is already identified by the access token.")
+        - Provided `scoringType` value is not supported. (`"code": "CUSTOMER_INSIGHTS.SCALE_TYPE_NOT_SUPPORTED","message": "Indicated parameter `scoringType` is not supported."`)
+        - Provided `idDocument` field is not supported. (`"code": "CUSTOMER_INSIGHTS.ID_DOCUMENT_NOT_SUPPORTED","message": "Indicated parameter `idDocument` is not supported."`)
       headers:
         x-correlator:
           description: Correlation id for the different services
@@ -454,46 +502,6 @@ components:
                 properties:
                   status:
                     enum:
-                      - 404
-                  code:
-                    enum:
-                      - NOT_FOUND
-                      - IDENTIFIER_NOT_FOUND
-          examples:
-            GENERIC_404_NOT_FOUND:
-              description: Resource is not found
-              value:
-                status: 404
-                code: NOT_FOUND
-                message: The specified resource is not found.
-            GENERIC_404_IDENTIFIER_NOT_FOUND:
-              description: The identifier cannot be matched to a device or phone number
-              value:
-                status: 404
-                code: IDENTIFIER_NOT_FOUND
-                message: The identifier is not found.
-    UnprocessableContent422:
-      description: |-
-        Unprocessable Content
-
-        In addition to regular scenario of Unprocessable Content, another scenarios may exist.
-        - Service not applicable for the provided identifier ("code": "SERVICE_NOT_APPLICABLE","message": "The service is not available for the provided identifier.")
-        - An identifier is not included in the request and the device or phone number identification cannot be derived from the 3-legged access token ("code": "MISSING_IDENTIFIER","message": "The phone number cannot be identified.")
-        - An explicit identifier is provided when a device or phone number has already been identified from the access token ("code": "UNNECESSARY_IDENTIFIER","message": "The phone number is already identified by the access token.")
-        - Provided `scoringType` value is not supported. (`"code": "CUSTOMER_INSIGHTS.SCALE_TYPE_NOT_SUPPORTED","message": "Indicated parameter scoringType is not supported."`)
-        - Provided `idDocument` field is not supported. (`"code": "CUSTOMER_INSIGHTS.ID_DOCUMENT_NOT_SUPPORTED","message": "Indicated parameter idDocument is not supported"`)
-      headers:
-        x-correlator:
-          $ref: '#/components/responses/NotFound404/headers/x-correlator'
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: '#/components/responses/NotFound404/content/application~1json/schema/allOf/0'
-              - type: object
-                properties:
-                  status:
-                    enum:
                       - 422
                   code:
                     enum:
@@ -509,13 +517,13 @@ components:
                 status: 422
                 code: SERVICE_NOT_APPLICABLE
                 message: The service is not available for the provided identifier.
-            GENERIC_422_MISSING_IDENTIFIER:
+            GENERIC_422_MISSING_IDENTIFIER_PHONE_NUMBER:
               description: The phone number is not included in the request and cannot be derived from the access token
               value:
                 status: 422
                 code: MISSING_IDENTIFIER
                 message: The phone number cannot be identified.
-            GENERIC_422_UNNECESSARY_IDENTIFIER:
+            GENERIC_422_UNNECESSARY_IDENTIFIER_PHONE_NUMBER:
               description: An explicit phone number is provided when the phone number has already been identified from the access token
               value:
                 status: 422
